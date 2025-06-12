@@ -1,0 +1,22 @@
+[project]
+name = "rma-kinetics"
+version = "0.1.0"
+description = "Models for simulating RMA dynamics."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["diffrax>=0.7.0"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
+[dependency-groups]
+dev = [
+    "diffopt>=1.2.0",
+    "marimo>=0.13.15",
+    "mpi4py>=4.0.3",
+    "polars>=1.30.0",
+    "pyarrow>=20.0.0",
+    "salib>=1.5.1",
+    "seaborn>=0.13.2",
+]
