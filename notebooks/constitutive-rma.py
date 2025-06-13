@@ -16,6 +16,7 @@ def _():
         numpy as jnp,
         config,
     )
+    from sklearn.metrics import r2_score
 
     import marimo as mo
     import polars as pl
@@ -40,6 +41,7 @@ def _():
         partial,
         pl,
         plt,
+        r2_score,
         sb,
     )
 
@@ -53,10 +55,11 @@ def _(mo):
 
 @app.cell
 def _(dataset, get_gluc_conc, os, pl):
-    data_dir = os.path.join("notebooks","data","aav_rma_timecourse",dataset.value)
+    base_dir = os.path.join("notebooks", "data", "aav_rma_timecourse")
+    data_dir = os.path.join(base_dir,dataset.value)
     raw_df = pl.read_csv(os.path.join(data_dir, "source.csv"))
     gluc_df = get_gluc_conc(raw_df)
-    return data_dir, gluc_df
+    return base_dir, data_dir, gluc_df
 
 
 @app.cell
@@ -119,7 +122,7 @@ def _(
         pso_result["swarm_loss_history"],
         pso_result["swarm_x_history"]
     )
-    return best_loss, best_params, sim_config
+    return best_loss, best_params, observed, sim_config
 
 
 @app.cell
@@ -130,7 +133,7 @@ def _(best_loss, best_params, data_dir, jnp, os):
     mse = best_loss / 3
     print(f"MSE: {mse}")
     jnp.save(os.path.join(data_dir, "param_est.npy"), best_params)
-    return (mse,)
+    return
 
 
 @app.cell
@@ -141,30 +144,35 @@ def _(
     data_dir,
     gluc_df,
     jnp,
-    mse,
+    observed,
     os,
     plt,
+    r2_score,
     sb,
     sim_config,
 ):
     # visual inspection
+
     sim_config["saveat"] = SaveAt(ts=jnp.linspace(0, 504, 504))
     model = ConstitutiveRMA(*best_params)
     solution = model.simulate(**sim_config)
 
     plt.plot(solution.ts, solution.ys[1], 'k')
     plt.errorbar(gluc_df["time"], gluc_df["gluc"], color="k", fmt="o")
+    _time = [0, 336, 504]
+    predicted = jnp.array([solution.ys[1][t]for t in _time])
+    r2 = r2_score(observed, predicted)
+    print(f"R2: {r2}")
+
 
     plt.xlabel("Time (hr)")
     plt.ylabel("Plasma RMA (nM)")
-    plt.text(0.05, 0.99, f"MSE = {mse:.3e}",
-             transform=plt.gca().transAxes,
-             ha='left', va='top', fontsize=16)
     sb.despine()
     plt.tight_layout()
     plt.savefig(os.path.join(data_dir, "fit.svg"))
+    jnp.save(os.path.join(data_dir, "solution.npy"), solution.ys[1])
     plt.gca()
-    return
+    return (solution,)
 
 
 @app.cell
@@ -212,6 +220,7 @@ def _(data_dir, mu_conf, mu_star, os, plt, sb, time):
     plt.ylabel("Mean Morris Sensitivity, $µ^*$")
     plt.legend(frameon=False)
     sb.despine()
+    plt.tight_layout()
     plt.savefig(os.path.join(data_dir, "morris_mean.svg"))
     plt.gca()
     return linestyles, param_labels
@@ -290,6 +299,58 @@ def _(sigma):
     print(f"kRMA std: {sigma[-1,0]}")
     print(f"kRT std: {sigma[-1,1]}")
     print(f"gammaRMA std: {sigma[-1,2]}")
+    return
+
+
+@app.cell
+def _(base_dir, dataset, get_gluc_conc, jnp, os, pl, plt, sb, solution):
+    # show fits on same plot
+    _colors = sb.color_palette(n_colors=3)
+    _shapes = ["o", "s", "^"]
+    handles = []
+    labels = []
+
+    order = ["SN", "CA1", "CP"]
+
+    #_colors = ["blue", "orange", "green"]
+    for _i, _dataset in enumerate(dataset.options.keys()):
+
+        print(_dataset) 
+        _raw_df = pl.read_csv(os.path.join(base_dir, _dataset, "source.csv"))
+        _gluc_df = get_gluc_conc(_raw_df)
+        _mean_gluc = _gluc_df.group_by("time").agg([
+            pl.col("gluc").mean().alias("mean_gluc"),
+            pl.col("gluc").std().alias("std_gluc")
+        ])
+
+        _solution = jnp.load(os.path.join(base_dir, _dataset, "solution.npy"))
+
+        line, = plt.plot(solution.ts, _solution, color=_colors[_i])
+        plt.errorbar(_mean_gluc["time"], _mean_gluc["mean_gluc"], yerr=_mean_gluc["std_gluc"], fmt=_shapes[_i], color=_colors[_i], alpha=0.5)
+        handles.append(line)
+        labels.append(_dataset)
+
+
+
+    #plt.legend(["CA1", "CP", "SN"], frameon=False)
+
+    order_idx = [labels.index(lbl) for lbl in order]
+    handles = [handles[i] for i in order_idx]
+    labels = [labels[i] for i in order_idx]
+
+    plt.legend(handles, labels, frameon=False)
+
+    sb.despine()
+    plt.xlabel("Time (hr)")
+    plt.ylabel("Plasma RMA (nM)")
+    plt.tight_layout()
+    plt.savefig(os.path.join(base_dir, "fit.svg"))
+    plt.gca()
+    return
+
+
+@app.cell
+def _():
     return
 
 
