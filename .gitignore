@@ -9,3 +9,6 @@ __marimo__
 
 # Virtual environments
 .venv
+
+# macos specific
+**/.DS_Store
