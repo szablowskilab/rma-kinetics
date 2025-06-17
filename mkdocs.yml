@@ -1,0 +1,14 @@
+site_name: RMA Kinetics Documentation
+theme:
+  name: "material"
+plugins:
+  - mkdocstrings
+nav:
+  - "index.md"
+  - API Reference:
+      - Models:
+          - "api/models/constitutive.md"
+          - "api/models/tetoff.md"
+          - "api/models/chemogenetic.md"
+          - "api/models/force.md"
+          - "api/models/abstract.md"
