@@ -6,14 +6,12 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
-    from rma_kinetics.models import ChemogeneticRMA, DoxPK, DoxPKConfig, CnoPK, CnoPKConfig
+    from rma_kinetics.models import ChemogeneticRMA, DoxPKConfig, CnoPKConfig
     from gluc import get_gluc_conc
-    from diffrax import PIDController, ClipStepSizeController, StepTo, SaveAt, RESULTS, Kvaerno5
+    from diffrax import PIDController, SaveAt, Kvaerno5
     from jax import config, numpy as jnp
-    from jax.lax import cond
     from diffopt.multiswarm import ParticleSwarm, get_best_loss_and_params
     from functools import partial
-
 
     import matplotlib.pyplot as plt
     import seaborn as sb
@@ -98,7 +96,7 @@ def _(cno_dose, data_dir, get_gluc_conc, os, pl):
     full_df = pl.read_csv(os.path.join(data_dir, "source.csv"))
     df = full_df.filter(pl.col("cno_dose") == float(cno_dose.value))
     gluc_df = get_gluc_conc(df)
-    return (gluc_df,)
+    return full_df, gluc_df
 
 
 @app.cell
@@ -177,7 +175,7 @@ def _(
         #y0[3] = 0
         #y0[4] = 0
         """
-    
+
         chunk_2 = rma_model.simulate(
             t0=0,
             t1=48,
@@ -208,7 +206,31 @@ def _(
 
 
 @app.cell
-def _(ParticleSwarm, get_best_loss_and_params, gluc_df, loss, partial, pl):
+def _(mo):
+    run_button = mo.ui.run_button()
+    return (run_button,)
+
+
+@app.cell
+def _(gluc_df, pl):
+    mean_gluc = gluc_df.group_by("time").agg([
+        pl.col("gluc").mean().alias("mean_gluc"),
+        pl.col("gluc").std().alias("std_gluc")
+    ])
+    return (mean_gluc,)
+
+
+@app.cell
+def _(
+    ParticleSwarm,
+    get_best_loss_and_params,
+    loss,
+    mean_gluc,
+    mo,
+    partial,
+    run_button,
+):
+    mo.stop(not run_button.value)
     bounds = [
         (1e-3, 0.1), # RMA production rate
         (0.54, 1), # RMA RT rate
@@ -225,10 +247,6 @@ def _(ParticleSwarm, get_best_loss_and_params, gluc_df, loss, partial, pl):
         (5e-5, 5e-3) # leaky tTA prod rate
     ]
 
-    mean_gluc = gluc_df.group_by("time").agg([
-        pl.col("gluc").mean().alias("mean_gluc"),
-        pl.col("gluc").std().alias("std_gluc")
-    ])
 
     observed = mean_gluc.sort("time")["mean_gluc"].to_jax()
     std = mean_gluc.sort("time")["std_gluc"].to_jax()
@@ -328,7 +346,7 @@ def _(
 
         print(f"MSE: {mse}")
         print(f"R2: {r2}")
-    
+
         return solution
 
         """
@@ -451,30 +469,258 @@ def _(best_params, cno_dose, data_dir, jnp, os):
     return
 
 
-app._unparsable_cell(
-    r"""
-    - good for tracking dynamics and optimising experiments
-    - optimisation of temporal resolution
-    - what are the most important contributors to the kinetics (i.e, sensitivy of params)
+@app.cell
+def _(data_dir, jnp, os):
+    # plot fits on single figure
+    cno_1mg_kg_fit = jnp.load(os.path.join(data_dir, "cno_1_solution.npy"))
+    cno_2mg_kg_fit = jnp.load(os.path.join(data_dir, "cno_2.5_solution.npy"))
+    return cno_1mg_kg_fit, cno_2mg_kg_fit
 
-    - serum markers are useful (limited so synthetic is better)
-    - slow kinetics (long half lives)
-    - developed synthetic serum markers that allow studying gene expression
-    - to develop better tools, we wanted to explore which parameters are most important
-    - explored transcytosis, overall kinetics, production
-    - in order to make better tools, more applicable, we evaluated what are the limits of the temporal resolution
-        - in different context like const or drug induced
-    - overall, we will be able to build better RMA based tools
-    - inform parameters that are necessary for optimal detection
 
-    - these results can be applicable to RMAs other markers, and Focused ultrasound liquid biopsy (Joon)
-    - can adapt these models can be adapted to other scenarios allowing to direct engineering efforts
+@app.cell
+def _(
+    cno_1mg_kg_fit,
+    cno_2mg_kg_fit,
+    data_dir,
+    full_df,
+    get_gluc_conc,
+    jnp,
+    os,
+    pl,
+    plt,
+    sb,
+):
+    _colors = sb.color_palette(n_colors=3)
+    _ts = jnp.linspace(0, 48, 288)
 
-    discussion
-    - how this model can improve the design (i.e., design stronger promoters for RMAs)
-    """,
-    name="_"
-)
+    cno_1mg_df = full_df.filter(pl.col("cno_dose") == 1)
+    cno_1mg_gluc = get_gluc_conc(cno_1mg_df)
+    cno_1mg_mean_gluc = cno_1mg_gluc.group_by("time").agg([
+        pl.col("gluc").mean().alias("mean_gluc"),
+        pl.col("gluc").std().alias("std_gluc")
+    ])
+
+    cno_2mg_df = full_df.filter(pl.col("cno_dose") == 2.5)
+    cno_2mg_gluc = get_gluc_conc(cno_2mg_df)
+    cno_2mg_mean_gluc = cno_2mg_gluc.group_by("time").agg([
+        pl.col("gluc").mean().alias("mean_gluc"),
+        pl.col("gluc").std().alias("std_gluc")
+    ])
+
+    plt.plot(_ts, cno_1mg_kg_fit[1], color=_colors[0], label="1")
+    plt.errorbar(cno_1mg_mean_gluc["time"], cno_1mg_mean_gluc["mean_gluc"], yerr=cno_1mg_mean_gluc["std_gluc"], fmt="o", color=_colors[0], alpha=0.25)
+
+    _colors = sb.color_palette(n_colors=3)
+    plt.plot(_ts, cno_2mg_kg_fit[1], color=_colors[1], label="2.5")
+    plt.errorbar(cno_2mg_mean_gluc["time"], cno_2mg_mean_gluc["mean_gluc"], yerr=cno_2mg_mean_gluc["std_gluc"], fmt="s", color=_colors[1], alpha=0.25)
+
+    plt.xlabel("Time (hr)")
+    plt.ylabel("Plasma RMA (nM)")
+    sb.despine()
+    plt.legend(frameon=False, title="CNO (mg/kg)")
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "chemogenetic_rma_fit_all.svg"))
+    plt.gca()
+    return
+
+
+@app.cell
+def _(cno_1mg_kg_fit, cno_2mg_kg_fit, jnp, plt, sb):
+    _ts = jnp.linspace(0, 48, 288)
+    _colors = sb.color_palette(n_colors=3)
+    _fig, _ax = plt.subplots()
+    _ax.plot(_ts, cno_1mg_kg_fit[9], color=_colors[0], label="Brain CLZ (1mg/kg CNO)")
+    _ax.plot(_ts, cno_2mg_kg_fit[9], color=_colors[1], label="Brain CLZ (2.5mg/kg CNO")
+
+    _ax.plot(_ts, cno_1mg_kg_fit[7], linestyle="--", color=_colors[0], label="Brain CNO (1mg/kg CNO)")
+    _ax.plot(_ts, cno_2mg_kg_fit[7], linestyle="--", color=_colors[1], label="Brain CNO (2.5mg/kg CNO)")
+
+    _ax.plot(_ts, cno_1mg_kg_fit[2], linestyle=":")
+    _ax.plot(_ts, cno_2mg_kg_fit[2], linestyle=":")
+    #_ax[0].legend(frameon=False)
+    sb.despine()
+    plt.tight_layout()
+
+    plt.gca()
+    return
+
+
+@app.cell
+def _(cno_1mg_kg_fit, cno_2mg_kg_fit, jnp, plt):
+    _ts = jnp.linspace(0, 48, 288)
+    plt.plot(_ts, cno_1mg_kg_fit[2])
+    plt.plot(_ts, cno_2mg_kg_fit[2])
+    return
+
+
+@app.cell
+def _(cno_1mg_kg_fit, cno_2mg_kg_fit, plt):
+    plt.plot(cno_1mg_kg_fit[5])
+    plt.plot(cno_2mg_kg_fit[5])
+    return
+
+
+@app.cell
+def _(
+    ChemogeneticRMA,
+    Kvaerno5,
+    PIDController,
+    SaveAt,
+    brain_dox_ss,
+    cno_model_config,
+    dox_model_config,
+    jnp,
+    plasma_dox_ss,
+):
+    # sensitivity analysis
+    from sensitivity import global_sensitivity
+
+    def map_model(params):
+        rma_model = ChemogeneticRMA(
+            rma_prod_rate=params[0],
+            rma_rt_rate=params[1],
+            rma_deg_rate=params[2],
+            dox_model_config=dox_model_config,
+            dox_kd=params[3],
+            tta_prod_rate=params[4],
+            tta_deg_rate=params[5],
+            tta_kd=params[6],
+            cno_model_config=cno_model_config,
+            cno_t0=48.0,
+            cno_ec50=params[7],
+            clz_ec50=params[8],
+            dq_prod_rate=params[9],
+            dq_deg_rate=1,
+            dq_ec50=params[10],
+            leaky_rma_prod_rate=params[11],
+            leaky_tta_prod_rate=params[12]
+        )
+
+        dox_withdrawal = rma_model.simulate(
+            t0=0,
+            t1=48,
+            dt0=0.1,
+            #y0=(0, 0, 0, brain_dox_ss, plasma_dox_ss, 10, 0, 0, 0, 0, 0),
+            y0=(0, 0, 0, brain_dox_ss, plasma_dox_ss, params[9], 0, 0, 0, 0, 0),
+            stepsize_controller=PIDController(atol=1e-5, rtol=1e-5),
+            saveat=SaveAt(t1=True),
+            throw=True,
+            solver=Kvaerno5()
+        )
+
+        y0 = list(dox_withdrawal.ys)
+        y0[6] += cno_model_config.cno_nmol
+
+        solution = rma_model.simulate(
+            t0=0,
+            t1=48,
+            dt0=0.1,
+            #y0=(0, 0, 0, brain_dox_ss, plasma_dox_ss, 10, 0, 0, 0, 0, 0),
+            y0=tuple(y0),
+            stepsize_controller=PIDController(atol=1e-5, rtol=1e-5),
+            saveat=SaveAt(ts=jnp.linspace(0, 48, 48)),
+            throw=True,
+            solver=Kvaerno5()
+        )
+        #breakpoint()
+
+        return solution.ys[1]
+
+    return global_sensitivity, map_model
+
+
+@app.cell
+def _(data_dir, global_sensitivity, jnp, map_model, os):
+    range = jnp.array([-0.5, 0.5])
+    sa_params = jnp.load(os.path.join(data_dir, "cno_1_param_estimates.npy"))
+    print(len(sa_params))
+    param_space = {
+        "num_vars": 13,
+        "names": [
+            "rma_prod_rate",
+            "rma_rt_rate",
+            "rma_deg_rate",
+            "dox_kd",
+            "tta_prod_rate",
+            "tta_deg_rate",
+            "tta_kd",
+            "cno_ec50",
+            "clz_ec50",
+            "dq_prod_rate",
+            "dq_ec50",
+            "leaky_rma_prod_rate",
+            "leaky_tta_prod_rate"
+        ],
+        "bounds": [p * (1 + range) for p in sa_params],
+        "outputs": "Y"
+    }
+
+    morris_y, morris_sens = global_sensitivity(map_model, param_space, 250)
+    time = jnp.linspace(0, 48, 288)
+    mu_star = jnp.array([s['mu_star'] for s in morris_sens])
+    mu_conf = jnp.array([s['mu_star_conf'] for s in morris_sens])
+    sigma = jnp.array([s['sigma'] for s in morris_sens])
+
+    return mu_conf, mu_star, sigma
+
+
+@app.cell
+def _(data_dir, jnp, mu_conf, mu_star, os, plt, sb):
+    idx = jnp.linspace(0, 13, 13, dtype=int)
+    sa_labels = [
+        "$k_{RMA}$",
+        "$k_{RT}$",
+        "$\\gamma_{RMA}$",
+        "$K_{D_{Dox}}$",
+        "$k_{tTA}$",
+        "$\\gamma_{tTA}$",
+        "$K_{D_{tTA}}$",
+        "$EC_{50_{CNO}}$",
+        "$EC_{50_{CLZ}}$",
+        "$[Dq]_{ss}$",
+        "$EC_{50_{Dq}}$",
+        "$k_{0_{RMA}}$",
+        "$k_{0_{tTA}}$",
+    ]
+
+    _fig, _ax = plt.subplots()
+    _ax.bar(
+        sa_labels, 
+        [mu_star[-1,i] for i in idx],
+        yerr=[mu_conf[-1,j] for j in idx],
+        color='lightgrey'
+    )
+
+    plt.ylabel("Mean Morris Sensitivty, $µ^*$")
+    for _label in _ax.get_xticklabels():
+        _label.set_rotation(75)
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "morris_mean_tf.svg"))
+    plt.gca()
+
+    return idx, sa_labels
+
+
+@app.cell
+def _(data_dir, idx, os, plt, sa_labels, sb, sigma):
+    _fig, _ax = plt.subplots()
+    _ax.bar(
+        sa_labels, 
+        [sigma[-1,i] for i in idx],
+        color='lightgrey'
+    )
+
+    plt.ylabel("Std. Morris Sensitivty, $\\sigma$")
+    for _label in _ax.get_xticklabels():
+        _label.set_rotation(75)
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "morris_std_tf.svg"))
+    plt.gca()
+    return
 
 
 if __name__ == "__main__":
