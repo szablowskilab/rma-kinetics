@@ -10,18 +10,18 @@ class TetRMA(AbstractModel):
 
     Attributes:
 
-        rma_prod_rate (`float`): RMA production rate (concentration/time).
-        rma_rt_rate (`float`): RMA reverse transcytosis rate (1/time).
-        rma_deg_rate (`float`): RMA degradation rate (1/time).
-        dox_model_config (`DoxPKConfig`): Dox PK model configuration.
-        dox_kd (`float`): Dox dissocation constant.
-        tta_prod_rate (`float`): tTA production rate.
-        tta_deg_rate (`float`): tTA degradation rate.
-        tta_kd (`float`): tTA-TetO operator dissocation constant.
-        leaky_rma_prod_rate (`float`): Leaky RMA production rate (Default = `0.0`).
-        tta_coop (`int`): tTA cooperativity (Default = `2`).
-        time_units (`Time`): Time units (Default = `Time.hours`).
-        conc_units (`Concentration`): Concentration units (Default = `Concentration.nanomolar`).
+        rma_prod_rate (float): RMA production rate (concentration/time).
+        rma_rt_rate (float): RMA reverse transcytosis rate (1/time).
+        rma_deg_rate (float): RMA degradation rate (1/time).
+        dox_model_config (DoxPKConfig): Dox PK model configuration.
+        dox_kd (float): Dox dissocation constant.
+        tta_prod_rate (float): tTA production rate.
+        tta_deg_rate (float): tTA degradation rate.
+        tta_kd (float): tTA-TetO operator dissocation constant.
+        leaky_rma_prod_rate (float): Leaky RMA production rate (Default = 0.0).
+        tta_coop (int): tTA cooperativity (Default = 2).
+        time_units (Time): Time units (Default = Time.hours).
+        conc_units (Concentration): Concentration units (Default = Concentration.nanomolar).
     """
     dox: DoxPK
     dox_kd: float
@@ -61,12 +61,12 @@ class TetRMA(AbstractModel):
         Tet induced RMA expression.
 
         Arguments:
-            t (`float`): Time points.
-            y `PyTree[float]`): Concentrations of plasma/brain RMA, transcriptional activator,
+            t (float): Time points.
+            y (PyTree[float]): Concentrations of plasma/brain RMA, transcriptional activator,
                 plasma/brain dox.
 
         Returns:
-            Concentrations of plasma/brain RMA along with all other species (`PyTree[float]`).
+            dydt (PyTree[float]): Concentrations of plasma/brain RMA along with all other species.
         """
         # brain and plasma dox are given as amounts here.
         brain_rma, plasma_rma, ta, brain_dox, plasma_dox = y

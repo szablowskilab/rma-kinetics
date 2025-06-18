@@ -21,10 +21,10 @@ class ForceRMA(AbstractModel):
     Model of rapidly changing RMA expression.
 
     Attributes:
-        rma_prod_rate (`float`): RMA production rate (concentration/time).
-        rma_rt_rate (`float`): RMA reverse transcytosis rate (1/time).
-        rma_deg_rate (`float`): RMA degradation rate (1/time).
-        freq (`float`): Frequency of oscillations (1/time).
+        rma_prod_rate (float): RMA production rate (concentration/time).
+        rma_rt_rate (float): RMA reverse transcytosis rate (1/time).
+        rma_deg_rate (float): RMA degradation rate (1/time).
+        freq (float): Frequency of oscillations (1/time).
     """
 
     def __init__(self, rma_prod, rma_rt, rma_deg, freq):

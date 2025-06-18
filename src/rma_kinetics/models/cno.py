@@ -10,20 +10,20 @@ class CnoPKConfig(EqxModule):
     CNO PK model configuration.
 
     Attributes:
-        cno_dose (`float`): Administered CNO dose.
-        cno_absorption_rate (`float`): CNO absorption rate.
-        cno_elimination_rate (`float`): Plasma CNO elimination rate.
-        cno_reverse_metabolism_rate (`float`): CNO reverse metabolism rate.
-        clz_metabolism_rate (`float`): CLZ metabolism rate.
-        cno_brain_transport_rate (`float`): Plasma to brain CNO transport rate.
-        cno_plasma_transport_rate (`float`): Brain to plasma CNO transport rate.
-        clz_brain_transport_rate (`float`): Plasma to brain CNO transport rate.
-        clz_plasma_transport_rate (`float`): Brain to plasma CNO transport rate.
-        clz_elimination_rate (`float`): Plasma CNO elimination rate.
-        cno_plasma_vd (`float`): Plasma CNO volume of distribution.
-        cno_brain_vd (`float`): Brain CNO volume of distribution.
-        clz_plasma_vd (`float`): Plasma CLZ volume of distribution.
-        clz_brain_vd (`float`): Brain CLZ volume of distribution.
+        cno_dose (float): Administered CNO dose.
+        cno_absorption_rate (float): CNO absorption rate.
+        cno_elimination_rate (float): Plasma CNO elimination rate.
+        cno_reverse_metabolism_rate (float): CNO reverse metabolism rate.
+        clz_metabolism_rate (float): CLZ metabolism rate.
+        cno_brain_transport_rate (float): Plasma to brain CNO transport rate.
+        cno_plasma_transport_rate (float): Brain to plasma CNO transport rate.
+        clz_brain_transport_rate (float): Plasma to brain CNO transport rate.
+        clz_plasma_transport_rate (float): Brain to plasma CNO transport rate.
+        clz_elimination_rate (float): Plasma CNO elimination rate.
+        cno_plasma_vd (float): Plasma CNO volume of distribution.
+        cno_brain_vd (float): Brain CNO volume of distribution.
+        clz_plasma_vd (float): Plasma CLZ volume of distribution.
+        clz_brain_vd (float): Brain CLZ volume of distribution.
     """
 
     cno_dose: float
@@ -52,7 +52,7 @@ class CnoPK(EqxModule):
     CNO PK model for chemogenetic RMA models.
 
     Attributes:
-        config (`CnoPKConfig`): Model configuration.
+        config (CnoPKConfig): Model configuration.
     """
     config: CnoPKConfig
 
@@ -67,11 +67,11 @@ class CnoPK(EqxModule):
         Two-compartment CNO kinetic model
 
         Arguments:
-            t (`float`): Time point.
-            y (`PyTree[float]`): CNO and CLZ amounts.
+            t (float): Time point.
+            y (PyTree[float]): CNO and CLZ amounts.
 
         Returns:
-            Tuple containing change in CNO and CLZ amounts (`PyTree[float]`).
+            dydt (PyTree[float]): Tuple containing change in CNO and CLZ amounts.
         """
         peritoneal_cno, plasma_cno, brain_cno, plasma_clz, brain_clz = y
 

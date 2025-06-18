@@ -8,16 +8,23 @@ class ConstitutiveRMA(AbstractModel):
     Model of constitutive RMA production.
 
     Attributes:
-        rma_prod_rate (`float`): RMA production rate (concentration/time).
-        rma_rt_rate (`float`): RMA reverse transcytosis rate (1/time).
-        rma_deg_rate (`float`): RMA degradation rate (1/time).
-        time_units: (`Time`): time units (Default = `Time.hours`).
-        conc_units: (`Concentration`): concentration units (Default = `Concentration.nanomolar`).
+        rma_prod_rate (float): RMA production rate (concentration/time).
+        rma_rt_rate (float): RMA reverse transcytosis rate (1/time).
+        rma_deg_rate (float): RMA degradation rate (1/time).
+        time_units: (Time): time units (Default = Time.hours).
+        conc_units: (Concentration): concentration units (Default = Concentration.nanomolar).
     """
 
     def _model(self, t: float, y: PyTree[float], args=None) -> PyTree[float]:
         """
         ODE model implementation.
+
+        Arguments:
+            t (float): Time point.
+            y (PyTree[float]): Brain and plasma RMA concentrations.
+
+        Returns:
+            dydt (PyTree[float]): Change in brain and plasma RMA concentrations.
         """
         brain_rma, plasma_rma = y
         plasma_rma_transport_flux = self.rma_rt_rate * brain_rma

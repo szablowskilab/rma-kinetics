@@ -1,13 +1,9 @@
 from .cno import CnoPK, CnoPKConfig
 from .dox import DoxPKConfig
 from .tet_induced import TetRMA
-from .abstract import Solution
 
-from diffrax import ClipStepSizeController, SaveAt, Kvaerno3, AbstractSolver, AbstractAdjoint, RecursiveCheckpointAdjoint, diffeqsolve, AbstractStepSizeController, ConstantStepSize
 from jaxtyping import PyTree
 from jax import numpy as jnp
-from jax.lax import cond as jcond
-#import jax
 
 
 class ChemogeneticRMA(TetRMA):
@@ -15,29 +11,29 @@ class ChemogeneticRMA(TetRMA):
     Chemogenetic activated RMA expression model.
 
     Attributes:
-        rma_prod_rate (`float`): RMA production rate (concentration/time).
-        rma_rt_rate (`float`): RMA reverse transcytosis rate (1/time).
-        rma_deg_rate (`float`): RMA degradation rate (1/time).
-        dox_model_config (`DoxPKConfig`): Dox PK model configuration.
-        dox_kd (`float`): Dox dissocation constant.
-        tta_prod_rate (`float`): tTA production rate.
-        tta_deg_rate (`float`): tTA degradation rate.
-        tta_kd (`float`): tTA-TetO operator dissocation constant.
-        cno_model_config (`CnoPKConfig`): CNO PK model configuration.
-        cno_t0 (`float`): CNO administration time.
-        cno_ec50 (`float`): CNO EC50.
-        clz_ec50 (`float`): CLZ EC50.
-        dq_prod_rate (`float`): hM3Dq production rate.
-        dq_deg_rate (`float`): hM3Dq degradation rate.
-        dq_ec50 (`float`): hM3Dq EC50.
-        leaky_rma_prod_rate (`float`): Leaky RMA production rate (Default = `0.0`).
-        leaky_tta_prod_rate (`float`): Leaky tTA production rate (Default = `0.0`).
-        tta_coop (`int`): tTA cooperativity (Default = `2`).
-        cno_coop (`int`): CNO cooperativity (Default = `1`).
-        clz_coop (`int`): CLZ cooperativity (Default = `1`).
-        dq_coop (`int`): hM3Dq cooperativity (Default = `1`).
-        time_units (`Time`): Time units (Default = `Time.hours`).
-        conc_units (`Concentration`): Concentration units (Default = `Concentration.nanomolar`).
+        rma_prod_rate (float): RMA production rate (concentration/time).
+        rma_rt_rate (float): RMA reverse transcytosis rate (1/time).
+        rma_deg_rate (float): RMA degradation rate (1/time).
+        dox_model_config (DoxPKConfig): Dox PK model configuration.
+        dox_kd (float): Dox dissocation constant.
+        tta_prod_rate (float): tTA production rate.
+        tta_deg_rate (float): tTA degradation rate.
+        tta_kd (float): tTA-TetO operator dissocation constant.
+        cno_model_config (CnoPKConfig): CNO PK model configuration.
+        cno_t0 (float): CNO administration time.
+        cno_ec50 (float): CNO EC50.
+        clz_ec50 (float): CLZ EC50.
+        dq_prod_rate (float): hM3Dq production rate.
+        dq_deg_rate (float): hM3Dq degradation rate.
+        dq_ec50 (float): hM3Dq EC50.
+        leaky_rma_prod_rate (float): Leaky RMA production rate (Default = 0.0).
+        leaky_tta_prod_rate (float): Leaky tTA production rate (Default = 0.0).
+        tta_coop (int): tTA cooperativity (Default = 2).
+        cno_coop (int): CNO cooperativity (Default = 1).
+        clz_coop (int): CLZ cooperativity (Default = 1).
+        dq_coop (int): hM3Dq cooperativity (Default = 1).
+        time_units (Time): Time units (Default = Time.hours).
+        conc_units (Concentration): Concentration units (Default = Concentration.nanomolar).
     """
     cno: CnoPK
     cno_t0: float
