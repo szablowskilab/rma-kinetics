@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from equinox import Module as EqxModule
+from equinox import Module as EqxModule, field
 from ..units import Time, Concentration
 from diffrax import (
     Solution as DiffSol,

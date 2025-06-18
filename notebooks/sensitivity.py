@@ -37,6 +37,10 @@ def global_sensitivity(
 
     param_vectors = morris_sampler.sample(problem_space, n_trajectories)
     y = vmap(map_model)(param_vectors)
+
+    if len(y.shape) > 2:
+        y = y.squeeze(-1)
+
     sensitivity = [morris_analyzer.analyze(problem_space, param_vectors, Y) for Y in y.T]
 
     return y, sensitivity

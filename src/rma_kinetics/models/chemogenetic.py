@@ -1,9 +1,11 @@
 from .cno import CnoPK, CnoPKConfig
 from .dox import DoxPKConfig
 from .tet_induced import TetRMA
+from ..units import Time, Concentration
 
 from jaxtyping import PyTree
 from jax import numpy as jnp
+from jax.lax import cond as jcond
 
 
 class ChemogeneticRMA(TetRMA):
@@ -70,6 +72,8 @@ class ChemogeneticRMA(TetRMA):
         cno_coop: int = 1,
         clz_coop: int = 1,
         dq_coop: int = 1,
+        time_units: Time = Time.hours,
+        conc_units: Concentration = Concentration.nanomolar
     ):
         super().__init__(
             rma_prod_rate,
@@ -82,6 +86,8 @@ class ChemogeneticRMA(TetRMA):
             tta_kd,
             leaky_rma_prod_rate,
             tta_coop,
+            time_units,
+            conc_units
         )
 
         self.cno = CnoPK(cno_model_config)

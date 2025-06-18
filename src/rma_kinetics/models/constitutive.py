@@ -1,4 +1,5 @@
 from .abstract import AbstractModel
+from ..units import Time, Concentration
 from diffrax import ODETerm, AbstractTerm
 from jaxtyping import PyTree
 
@@ -14,6 +15,22 @@ class ConstitutiveRMA(AbstractModel):
         time_units: (Time): time units (Default = Time.hours).
         conc_units: (Concentration): concentration units (Default = Concentration.nanomolar).
     """
+
+    def __init__(
+        self,
+        rma_prod_rate: float,
+        rma_rt_rate: float,
+        rma_deg_rate: float,
+        time_units: Time = Time.hours,
+        conc_units: Concentration = Concentration.nanomolar
+    ):
+        super().__init__(
+            rma_prod_rate,
+            rma_rt_rate,
+            rma_deg_rate,
+            time_units=time_units,
+            conc_units=conc_units
+        )
 
     def _model(self, t: float, y: PyTree[float], args=None) -> PyTree[float]:
         """

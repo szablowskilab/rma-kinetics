@@ -1,4 +1,5 @@
 from .abstract import AbstractModel
+from ..units import Time, Concentration
 from diffrax import ODETerm, AbstractTerm
 
 from jax import (
@@ -27,10 +28,17 @@ class ForceRMA(AbstractModel):
         freq (float): Frequency of oscillations (1/time).
     """
 
-    def __init__(self, rma_prod, rma_rt, rma_deg, freq):
-        super().__init__(rma_prod, rma_rt, rma_deg)
+    def __init__(
+        self,
+        rma_prod_rate: float,
+        rma_rt_rate: float,
+        rma_deg_rate: float,
+        freq: float,
+        time_units: Time = Time.hours,
+        conc_units: Concentration = Concentration.nanomolar
+    ):
+        super().__init__(rma_prod_rate, rma_rt_rate, rma_deg_rate, time_units, conc_units)
         self.freq = freq
-
 
     def _force_rma_prod_rate(self, t: float) -> Array:
         return self.rma_prod_rate * (1 + jnp.sin(2 * jnp.pi * self.freq * t))

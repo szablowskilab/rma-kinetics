@@ -1,4 +1,5 @@
 from .abstract import AbstractModel
+from ..units import Time, Concentration
 from .dox import DoxPK, DoxPKConfig
 from jaxtyping import PyTree
 from diffrax import ODETerm
@@ -43,9 +44,11 @@ class TetRMA(AbstractModel):
         tta_kd: float,
         leaky_rma_prod_rate: float = 0.0,
         tta_coop: int = 2,
+        time_units: Time = Time.hours,
+        conc_units: Concentration = Concentration.nanomolar
     ):
 
-        super().__init__(rma_prod_rate, rma_rt_rate, rma_deg_rate)
+        super().__init__(rma_prod_rate, rma_rt_rate, rma_deg_rate, time_units=time_units, conc_units=conc_units)
 
         self.dox = DoxPK(dox_model_config)
         self.dox_kd = dox_kd
