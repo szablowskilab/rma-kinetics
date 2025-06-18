@@ -8,9 +8,11 @@ class ConstitutiveRMA(AbstractModel):
     Model of constitutive RMA production.
 
     Attributes:
-        rma_prod_rate (float): RMA production rate (concentration/time).
-        rma_rt_rate (float): RMA reverse transcytosis rate (1/time).
-        rma_deg_rate (float): RMA degradation rate (1/time).
+        rma_prod_rate (`float`): RMA production rate (concentration/time).
+        rma_rt_rate (`float`): RMA reverse transcytosis rate (1/time).
+        rma_deg_rate (`float`): RMA degradation rate (1/time).
+        time_units: (`Time`): time units (Default = `Time.hours`).
+        conc_units: (`Concentration`): concentration units (Default = `Concentration.nanomolar`).
     """
 
     def _model(self, t: float, y: PyTree[float], args=None) -> PyTree[float]:

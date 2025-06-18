@@ -27,17 +27,29 @@ class Solution(EqxModule):
 
     def plot_plasma_rma(self):
         if self._diffsol.ys is not None:
-            plt.plot(self._diffsol.ts, self._diffsol.ys[1])
+            plt.plot(self._diffsol.ts, self._diffsol.ys[1], 'k')
             plt.xlabel(f"Time ({Time[self.time_units]})")
             plt.ylabel(f"Plasma RMA ({Concentration[self.conc_units]})")
-            plt.gca()
         else:
             raise ValueError("Solution is empty")
+
+    def _plot_species(self, i: int, label: str):
+        if self._diffsol.ys is not None and len(self._diffsol.ys) >= i:
+            plt.plot(self._diffsol.ts, self._diffsol.ys[i], 'k')
+            plt.xlabel(f"Time ({Time[self.time_units]}")
+            plt.ylabel(f"{label} ({Concentration[self.conc_units]})")
 
 
 class AbstractModel(EqxModule):
     """
-    Abstract RMA Model.
+    Abstract RMA model.
+
+    Attributes:
+        rma_prod_rate (`float`): RMA production rate (concentration/time).
+        rma_rt_rate (`float`): RMA reverse transcytosis rate (1/time).
+        rma_deg_rate (`float`): RMA degradation rate (1/time).
+        time_units (`Time`): Time units (Default = `Time.hours`).
+        conc_units (`Concentration`): Concentration units (Default = `Concentration.nanomolar`).
     """
     rma_prod_rate: float
     rma_rt_rate: float
@@ -101,24 +113,23 @@ class AbstractModel(EqxModule):
         """
         Wraps `diffrax.diffeqsolve` with specific defaults for RMA model simulation.
 
-        Args:
-            t0 (`float`): Start tiem of integration.
-            t1 (`float`): Stop tiem of integration.
-            dt0 (Optional, `float | None`): Initial step size if using adaptive
+        Arguments:
+            t0 (`float`): Start time of integration.
+            t1 (`float`): Stop time of integration.
+            dt0 (`float | None`): Initial step size if using adaptive
                 step sizes, or size of all steps if using constant stepsize
                 (Default = None).
-            y0 (Optional, `PyTree[float]`): Initial conditions (Default = (0, 0)).
-            saveat (Optional, `SaveAt`): Times to save solution (Default = SaveAt(dense=True)).
-            stepsize_controller (Optional, `AbstractStepSizeController`): Determines
-                how to change step size during integration (Default = ConstantStepSize()).
-            max_steps (Optional, `int`): Max number of steps before stopping (Default = 4096).
-            solver (Optional, `AbstractSolver`): Differential equation solver (Default = Kvaerno3()).
-            adjoint (Optional, `AbstractAdjoint`): How to differentiate (Default = RecursiveCheckpointAdjoint()).
-            Defaults to discretize-then-optimize.
-            throw (Optional, `bool`): Raise an exception if integration fails (Default = True).
+            y0 (`PyTree[float]`): Initial conditions (Default = `(0, 0)`).
+            saveat (`SaveAt`): Times to save solution (Default = `SaveAt(dense=True)`).
+            stepsize_controller (`AbstractStepSizeController`): Determines
+                how to change step size during integration (Default = `ConstantStepSize()`).
+            max_steps (`int`): Max number of steps before stopping (Default = `4096`).
+            solver (`AbstractSolver`): Differential equation solver (Default = `Kvaerno3()`).
+            adjoint (`AbstractAdjoint`): How to differentiate (Default = `RecursiveCheckpointAdjoint()`).
+            throw (`bool`): Raise an exception if integration fails (Default = `True`).
 
         Returns:
-            Solution object (diffrax.Solution).
+            Solution object (`Solution`).
         """
         diffsol = diffeqsolve(
             self._terms(),

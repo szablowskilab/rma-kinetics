@@ -1,16 +1,43 @@
 from .cno import CnoPK, CnoPKConfig
 from .dox import DoxPKConfig
 from .tet_induced import TetRMA
+from .abstract import Solution
 
-from diffrax import SaveAt, Kvaerno3, AbstractSolver, AbstractAdjoint, RecursiveCheckpointAdjoint, diffeqsolve, AbstractStepSizeController, ConstantStepSize
+from diffrax import ClipStepSizeController, SaveAt, Kvaerno3, AbstractSolver, AbstractAdjoint, RecursiveCheckpointAdjoint, diffeqsolve, AbstractStepSizeController, ConstantStepSize
 from jaxtyping import PyTree
 from jax import numpy as jnp
-import jax
-from http.cookiejar import debug
+from jax.lax import cond as jcond
+#import jax
+
 
 class ChemogeneticRMA(TetRMA):
     """
-    Model of chemogenetic activated RMA expression.
+    Chemogenetic activated RMA expression model.
+
+    Attributes:
+        rma_prod_rate (`float`): RMA production rate (concentration/time).
+        rma_rt_rate (`float`): RMA reverse transcytosis rate (1/time).
+        rma_deg_rate (`float`): RMA degradation rate (1/time).
+        dox_model_config (`DoxPKConfig`): Dox PK model configuration.
+        dox_kd (`float`): Dox dissocation constant.
+        tta_prod_rate (`float`): tTA production rate.
+        tta_deg_rate (`float`): tTA degradation rate.
+        tta_kd (`float`): tTA-TetO operator dissocation constant.
+        cno_model_config (`CnoPKConfig`): CNO PK model configuration.
+        cno_t0 (`float`): CNO administration time.
+        cno_ec50 (`float`): CNO EC50.
+        clz_ec50 (`float`): CLZ EC50.
+        dq_prod_rate (`float`): hM3Dq production rate.
+        dq_deg_rate (`float`): hM3Dq degradation rate.
+        dq_ec50 (`float`): hM3Dq EC50.
+        leaky_rma_prod_rate (`float`): Leaky RMA production rate (Default = `0.0`).
+        leaky_tta_prod_rate (`float`): Leaky tTA production rate (Default = `0.0`).
+        tta_coop (`int`): tTA cooperativity (Default = `2`).
+        cno_coop (`int`): CNO cooperativity (Default = `1`).
+        clz_coop (`int`): CLZ cooperativity (Default = `1`).
+        dq_coop (`int`): hM3Dq cooperativity (Default = `1`).
+        time_units (`Time`): Time units (Default = `Time.hours`).
+        conc_units (`Concentration`): Concentration units (Default = `Concentration.nanomolar`).
     """
     cno: CnoPK
     cno_t0: float
@@ -73,13 +100,17 @@ class ChemogeneticRMA(TetRMA):
         self.dq_coop = dq_coop
         self.leaky_tta_prod_rate = leaky_tta_prod_rate
 
+    def _cno_inj_control(self, t, y, args=None):
+        control = jnp.zeros_like(y)
+        return control.at[6].set(1.0)
+
     def _model(self, t: float, y: PyTree[float], args=None) -> PyTree[float]:
 
         brain_rma, plasma_rma, ta, brain_dox, plasma_dox, dreadd, peritoneal_cno, brain_cno, plasma_cno, brain_clz, plasma_clz = y
 
         # CNO injection
-        # peritoneal_cno = cond(
-        #     jnp.abs(t - self.cno_t0) < 0.005,
+        # peritoneal_cno = jcond(
+        #     t == self.cno_t0,
         #     lambda: peritoneal_cno + self.cno.cno_nmol,
         #     lambda: peritoneal_cno
         # )
@@ -113,70 +144,3 @@ class ChemogeneticRMA(TetRMA):
             dbrain_clz,
             dplasma_clz
         )
-
-    def _simulate(
-        self,
-        t0: float,
-        t1: float,
-        dt0: float | None=None,
-        y0: PyTree[float]=(0,0),
-        saveat: SaveAt = SaveAt(dense=True),
-        stepsize_controller: AbstractStepSizeController = ConstantStepSize(),
-        max_steps: int = 4096,
-        solver: AbstractSolver = Kvaerno3(),
-        adjoint: AbstractAdjoint = RecursiveCheckpointAdjoint(),
-        throw: bool = True,
-    ):
-
-        chunk_1_saveat = SaveAt(ts=jnp.linspace(t0, self.cno_t0, self.cno_t0))
-        chunk_1 = diffeqsolve(
-            self._terms(),
-            solver,
-            t0,
-            self.cno_t0,
-            dt0,
-            y0,
-            saveat=chunk_1_saveat,
-            stepsize_controller=stepsize_controller,
-            max_steps=max_steps,
-            adjoint=adjoint,
-            throw=throw
-        )
-
-        chunk_2_saveat = SaveAt(ts=jnp.linspace(self.cno_t0, t1, t1 - self.cno_t0))
-        y0_2 = (
-            chunk_1.ys[0][-1],
-            chunk_1.ys[1][-1],
-            chunk_1.ys[2][-1],
-            chunk_1.ys[3][-1],
-            chunk_1.ys[4][-1],
-            chunk_1.ys[5][-1],
-            chunk_1.ys[6][-1] + self.cno.cno_nmol,
-            chunk_1.ys[7][-1],
-            chunk_1.ys[8][-1],
-            chunk_1.ys[9][-1],
-            chunk_1.ys[10][-1],
-        )
-
-        chunk_2 = diffeqsolve(
-            self._terms(),
-            solver,
-            self.cno_t0,
-            t1,
-            dt0,
-            y0_2,
-            saveat=chunk_2_saveat,
-            stepsize_controller=stepsize_controller,
-            max_steps=max_steps,
-            adjoint=adjoint,
-            throw=throw
-        )
-
-
-        full_ts = jnp.concatenate([chunk_1.ts[:-1], chunk_2.ts])
-        ys_1_array = jnp.array(list(chunk_1.ys))
-        ys_2_array = jnp.array(list(chunk_2.ys))
-        #jax.debug.breakpoint()
-        full_ys = jnp.concatenate([ys_1_array[:, :-1], ys_2_array], axis=1)
-
-        return {"ts": full_ts, "ys": full_ys}

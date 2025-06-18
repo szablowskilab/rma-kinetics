@@ -8,6 +8,21 @@ from jax.lax import cond as jax_cond
 DOX_MW = 444.4 # g/mol
 
 class DoxPKConfig(EqxModule):
+    """
+    Dox PK model configuration.
+
+    Attributes:
+        vehicle_intake_rate (`float`): Dox chow/water intake rate.
+        bioavailability (`float`): Dox bioavailability as a float between 0 and 1.
+        vehicle_dose (`float`): Dox amount in chow/water (i.e., mg dox / kg chow).
+        absorption_rate (`float`): Dox absorption rate into the plasma.
+        elimination_rate (`float`): Elimination rate from plasma.
+        brain_transport_rate (`float`): Plasma to brain transport rate.
+        plasma_transport_rate (`float`): Brain to plasma transport rate.
+        t0 (`float`): Start time of dox administration.
+        t1 (`float`): Stop time of dox administration.
+        plasma_vd (`float`): Plasma dox volume of distribution.
+    """
     vehicle_intake_rate: float
     bioavailability: float
     vehicle_dose: float
@@ -29,7 +44,7 @@ class DoxPK(EqxModule):
     Dox PK model for tet-induced and chemogenetic RMA models.
 
     Attributes:
-        model_config (`DoxPKConfig`): Model parameters.
+        config (`DoxPKConfig`): Model configuration.
     """
     config: DoxPKConfig
 
@@ -44,9 +59,11 @@ class DoxPK(EqxModule):
         """
         Time dependent dox intake.
 
-        :param t: time point (float)
-        :return:
-            dox intake rate (float)
+        Arguments:
+            t (`float`): time point.
+
+        Returns:
+            dox intake rate (`float`)
         """
 
         return jax_cond(
@@ -59,10 +76,12 @@ class DoxPK(EqxModule):
         """
         Two compartment dox kinetic model.
 
-        :param t: time point (float)
-        :param y: tuple containing plasma and brain dox amounts (PyTree[float])
-        :return:
-            Tuple containing change in plasma and brain dox amounts (PyTree[float])
+        Arguments:
+            t (`float`): time point.
+            y (`PyTree[float]`): Plasma and brain dox amounts.
+
+        Returns:
+            Tuple containing change in plasma and brain dox amounts (`PyTree[float]`)
         """
 
         plasma_dox, brain_dox = y
