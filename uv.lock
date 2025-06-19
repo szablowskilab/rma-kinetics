@@ -258,7 +258,7 @@ wheels = [
 [[package]]
 name = "diffrax"
 version = "0.7.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/patrick-kidger/diffrax#d3c1430b76e7d0158536823724371d7b26f5db8f" }
 dependencies = [
     { name = "equinox" },
     { name = "jax" },
@@ -267,10 +267,6 @@ dependencies = [
     { name = "optimistix" },
     { name = "typing-extensions" },
     { name = "wadler-lindig" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/9e/d6081a1daf7a7b70f53ddac637bd2e6cd6fa91042ffd7b204741c0ce6d44/diffrax-0.7.0.tar.gz", hash = "sha256:f3bcc578cd92a9ca86fc6f5a54c1de76c1ba62f74de69b56002624bf205316f1", size = 151595 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/1d/236424e689f62d7fe58f8b10f08c63a49c68efba087eabdd09198a9bbf38/diffrax-0.7.0-py3-none-any.whl", hash = "sha256:aa9645c40552f11a2d32042ef6b9fcd53c1f0f6bdbe32d37cb788669ca9910be", size = 193163 },
 ]
 
 [[package]]
@@ -1560,6 +1556,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "diffrax" },
+    { name = "matplotlib" },
 ]
 
 [package.dev-dependencies]
@@ -1579,7 +1576,10 @@ docs = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "diffrax", specifier = ">=0.7.0" }]
+requires-dist = [
+    { name = "diffrax", git = "https://github.com/patrick-kidger/diffrax" },
+    { name = "matplotlib", specifier = ">=3.10.3" },
+]
 
 [package.metadata.requires-dev]
 dev = [

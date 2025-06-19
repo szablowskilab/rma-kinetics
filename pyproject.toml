@@ -4,11 +4,17 @@ version = "0.1.0"
 description = "Kinetic models for released markers of activity."
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["diffrax>=0.7.0"]
+dependencies = [
+    "diffrax>=0.7.0",
+    "matplotlib>=3.10.3",
+]
 
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
+
+[tool.uv.sources]
+diffrax = { git = "https://github.com/patrick-kidger/diffrax" }
 
 [dependency-groups]
 dev = [

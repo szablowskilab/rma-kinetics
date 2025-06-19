@@ -1,12 +1,12 @@
 from abc import abstractmethod
-from equinox import Module as EqxModule, field
+from equinox import Module as EqxModule
 from ..units import Time, Concentration
 from diffrax import (
     Solution as DiffSol,
     diffeqsolve,
     SaveAt,
     AbstractStepSizeController,
-    ConstantStepSize,
+    PIDController,
     Kvaerno3,
     AbstractSolver,
     RecursiveCheckpointAdjoint,
@@ -17,6 +17,11 @@ from jaxtyping import PyTree
 import matplotlib.pyplot as plt
 
 
+SPECIES_MAP = {
+    "Brain RMA": 0,
+    "Plasma RMA": 1
+}
+
 class Solution(EqxModule):
     _diffsol: DiffSol
     time_units: Time
@@ -25,19 +30,35 @@ class Solution(EqxModule):
     def __getattr__(self, name):
         return getattr(self._diffsol, name)
 
+    @property
+    def brain_rma(self):
+        """Get brain RMA solution"""
+        return self.get_species("Brain RMA")
+
+    @property
+    def plasma_rma(self):
+        """Get plasma RMA solution"""
+        return self._get_species("Plasma RMA")
+
     def plot_plasma_rma(self):
-        if self._diffsol.ys is not None:
-            plt.plot(self._diffsol.ts, self._diffsol.ys[1], 'k')
-            plt.xlabel(f"Time ({Time[self.time_units]})")
-            plt.ylabel(f"Plasma RMA ({Concentration[self.conc_units]})")
+        """Plot plasma RMA solution"""
+        self._plot_species("Plasma RMA")
+
+    def _get_species(self, label: str):
+        idx = SPECIES_MAP[label]
+        if self._diffsol.ys is not None and len(self._diffsol.ys) >= idx:
+            return self._diffsol.ys[idx]
         else:
             raise ValueError("Solution is empty")
 
-    def _plot_species(self, i: int, label: str):
-        if self._diffsol.ys is not None and len(self._diffsol.ys) >= i:
-            plt.plot(self._diffsol.ts, self._diffsol.ys[i], 'k')
+    def _plot_species(self, label: str):
+        idx = SPECIES_MAP[label]
+        if self._diffsol.ys is not None and len(self._diffsol.ys) >= idx:
+            plt.plot(self._diffsol.ts, self._diffsol.ys[idx], 'k')
             plt.xlabel(f"Time ({Time[self.time_units]}")
             plt.ylabel(f"{label} ({Concentration[self.conc_units]})")
+        else:
+            raise ValueError("Solution is empty")
 
 
 class AbstractModel(EqxModule):
@@ -104,13 +125,15 @@ class AbstractModel(EqxModule):
             dt0: float | None=None,
             y0: PyTree[float]=(0,0),
             saveat: SaveAt = SaveAt(dense=True),
-            stepsize_controller: AbstractStepSizeController = ConstantStepSize(),
+            stepsize_controller: AbstractStepSizeController = PIDController(rtol=1e-5, atol=1e-5),
             max_steps: int = 4096,
             solver: AbstractSolver = Kvaerno3(),
             adjoint: AbstractAdjoint = RecursiveCheckpointAdjoint(),
             throw: bool = True,
     ):
         """
+        Simulates model within the given time interval.
+
         Wraps `diffrax.diffeqsolve` with specific defaults for RMA model simulation.
 
         Arguments:
@@ -119,14 +142,14 @@ class AbstractModel(EqxModule):
             dt0 (float | None`): Initial step size if using adaptive
                 step sizes, or size of all steps if using constant stepsize
                 (Default = None).
-            y0 (PyTree[float]): Initial conditions (Default = (0, 0)).
-            saveat (SaveAt): Times to save solution (Default = SaveAt(dense=True)).
+            y0 (PyTree[float]): Initial conditions.
+            saveat (SaveAt): Times to save solution.
             stepsize_controller (AbstractStepSizeController`): Determines
-                how to change step size during integration (Default = ConstantStepSize()).
-            max_steps (int): Max number of steps before stopping (Default = 4096).
-            solver (AbstractSolver): Differential equation solver (Default = Kvaerno3()).
-            adjoint (AbstractAdjoint): How to differentiate (Default = RecursiveCheckpointAdjoint()).
-            throw (bool): Raise an exception if integration fails (Default = True).
+                how to change step size during integration.
+            max_steps (int): Max number of steps before stopping.
+            solver (AbstractSolver): Differential equation solver.
+            adjoint (AbstractAdjoint): How to differentiate.
+            throw (bool): Raise an exception if integration fails.
 
         Returns:
             solution (Solution): A solution object (parent of diffrax.Solution) with added plotting methods.
