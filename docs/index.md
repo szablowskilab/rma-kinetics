@@ -1,17 +1,45 @@
-# Welcome to MkDocs
+# Home
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+RMA kinetics is a library providing models for simulating synthetic serum marker
+dynamics in various context, including constitutive and drug induced expression.
 
-## Commands
+Currently, there are three main models:
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+1. [ConstitutiveRMA](./api/models/constitutive.md)
+2. [TetRMA](./api/models/tetoff.md)
+3. [ChemogeneticRMA](./api/models/chemogenetic.md)
 
-## Project layout
+## Installation
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+```bash
+uv add rma_kinetics
+
+# or with standard pip
+# pip install rma_kinetics
+```
+
+## Quick Start
+
+```python
+```
+
+All RMA models can be run by calling the `simulate` method detailed below.
+
+### Method: `simulate`
+
+:::rma_kinetics.models.AbstractModel.simulate
+
+Please see the [API reference]() or [examples]() for more details.
+
+## Citation
+
+If you found this library useful, please cite: [(bioarxiv link)]()
+
+```bibtex
+@paper{buitrago2025rma
+  title={Modeling synthetic serum markers for monitoring deep tissue gene expression},
+  author={Nicolas Buitrago, Josefina Brau, Jerzy Szablowski},
+  year={2025},
+}
+```
+Also consider starring the project on [GitHub]().

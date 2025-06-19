@@ -1,8 +1,33 @@
 site_name: RMA Kinetics Documentation
 theme:
   name: "material"
+  palette:
+    primary: blue
+    accent: blue
+  theme:
+    features:
+      - content.code.copy
+extra:
+  homepage: https://szablowskilab.org
 plugins:
   - mkdocstrings
+  - search
+markdown_extensions:
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+repo_url: https://github.com/szablowskilab/rma-kinetics
+repo_name: szablowskilab/rma-kinetics
+extra_javascript:
+  - js/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 nav:
   - "index.md"
   - API Reference:
@@ -12,3 +37,10 @@ nav:
           - "api/models/chemogenetic.md"
           - "api/models/force.md"
           - "api/models/abstract.md"
+          - Dox:
+              - "api/models/dox/model.md"
+              - "api/models/dox/config.md"
+          - CNO:
+              - "api/models/cno/model.md"
+              - "api/models/cno/config.md"
+      - "api/units.md"
