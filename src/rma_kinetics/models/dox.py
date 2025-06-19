@@ -12,31 +12,35 @@ class DoxPKConfig(EqxModule):
     Dox PK model configuration.
 
     Attributes:
-        vehicle_intake_rate (float): Dox chow/water intake rate.
-        bioavailability (float): Dox bioavailability as a float between 0 and 1.
-        vehicle_dose (float): Dox amount in chow/water (i.e., mg dox / kg chow).
-        absorption_rate (float): Dox absorption rate into the plasma.
-        elimination_rate (float): Elimination rate from plasma.
-        brain_transport_rate (float): Plasma to brain transport rate.
-        plasma_transport_rate (float): Brain to plasma transport rate.
+        dose (float): Dox amount in chow/water (i.e., mg dox / kg chow).
         t0 (float): Start time of dox administration.
         t1 (float): Stop time of dox administration.
-        plasma_vd (float): Plasma dox volume of distribution.
+        vehicle_intake_rate (float): Dox chow/water intake rate (Default: 1.875e-4).
+        bioavailability (float): Dox bioavailability as a float between 0 and 1 (Default = 0.9).
+        absorption_rate (float): Dox absorption rate into the plasma (Default = 0.8).
+        elimination_rate (float): Elimination rate from plasma (Default = 0.2).
+        brain_transport_rate (float): Plasma to brain transport rate (Default = 0.2).
+        plasma_transport_rate (float): Brain to plasma transport rate (Default = 1).
+        plasma_vd (float): Plasma dox volume of distribution (Default = 0.21).
     """
-    vehicle_intake_rate: float
-    bioavailability: float
-    vehicle_dose: float
-    absorption_rate: float
-    elimination_rate: float
-    brain_transport_rate: float
-    plasma_transport_rate: float
+    dose: float
     t0: float
     t1: float
-    plasma_vd: float
+    vehicle_intake_rate: float = 1.875e-4
+    bioavailability: float = 0.9
+    absorption_rate: float = 0.8
+    elimination_rate: float = 0.2
+    brain_transport_rate: float = 0.2
+    plasma_transport_rate: float = 1
+    plasma_vd: float = 0.21
     intake_rate: float = field(init=False)
+    plasma_dox_ss: float = field(init=False)
+    brain_dox_ss: float = field(init=False)
 
     def __post_init__(self):
-        self.intake_rate = self.vehicle_intake_rate * self.bioavailability * self.vehicle_dose / (DOX_MW * self.plasma_vd)* 1e6
+        self.intake_rate = self.vehicle_intake_rate * self.bioavailability * self.dose / (DOX_MW * self.plasma_vd)* 1e6
+        self.plasma_dox_ss = self.absorption_rate * self.intake_rate / self.elimination_rate
+        self.brain_dox_ss = self.brain_transport_rate * self.plasma_dox_ss / self.plasma_transport_rate
 
 
 class DoxPK(EqxModule):
@@ -67,7 +71,7 @@ class DoxPK(EqxModule):
         """
 
         return jax_cond(
-            jnp.logical_and(t > self.t0, t < self.t1),
+            jnp.logical_and(t >= self.t0, t < self.t1),
             lambda: self.intake_rate,
             lambda: 0.0
         )

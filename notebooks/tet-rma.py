@@ -44,7 +44,7 @@ def _(DoxPKConfig):
     dox_pk = DoxPKConfig(
         vehicle_intake_rate=1.875e-4, # mg food / hr - 4.5 mg / day
         bioavailability=0.90,
-        vehicle_dose=625 * dox_hyclate_percent, # mg / kg food
+        dose=625 * dox_hyclate_percent, # mg / kg food
         absorption_rate=0.8, # 1/hr
         elimination_rate=0.2, # 1 / hr
         brain_transport_rate=0.2, # 1/ hr
@@ -142,7 +142,7 @@ def _(
         dox_pk = DoxPKConfig(
             vehicle_intake_rate=1.875e-4, # mg food / hr - 4.5 mg / day
             bioavailability=0.90,
-            vehicle_dose=dose * dox_hyclate_percent, # mg / kg food
+            dose=dose * dox_hyclate_percent, # mg / kg food
             absorption_rate=0.8, # 1/hr
             elimination_rate=0.2, # 1 / hr
             brain_transport_rate=0.2, # 1/ hr
@@ -217,7 +217,7 @@ def _(DoxPKConfig, PIDController, SaveAt, TetRMA, jnp, mouse_weight):
         dox_pk = DoxPKConfig(
             vehicle_intake_rate=params[3], # mg food / hr - 4.5 mg / day
             bioavailability=params[4],
-            vehicle_dose=params[5], # mg / kg food
+            dose=params[5], # mg / kg food
             absorption_rate=params[6], # 1/hr
             elimination_rate=params[7], # 1 / hr
             brain_transport_rate=params[8], # 1/ hr
@@ -252,7 +252,7 @@ def _(DoxPKConfig, PIDController, SaveAt, TetRMA, jnp, mouse_weight):
         )
 
         return solution.ys[1]
-    
+
     range = jnp.array([-0.5, 0.5])
     param_space = {
         "num_vars": 15,
@@ -375,6 +375,13 @@ def _(data_dir, jnp, labels, mu_conf, mu_star, os, plt, sb):
 
 
 @app.cell
+def _(mu_conf, mu_star):
+    print(f"RMA deg mu_star: {mu_star[192, 2]} +- {mu_conf[192, 2]}")
+    print(f"tTA-TetO Kd: {mu_star[192, 13]} +- {mu_conf[192, 13]}")
+    return
+
+
+@app.cell
 def _(data_dir, idx, labels, mu_conf, mu_star, os, plt, sb):
     _fig, _ax = plt.subplots()
     _ax.bar(
@@ -393,6 +400,17 @@ def _(data_dir, idx, labels, mu_conf, mu_star, os, plt, sb):
     plt.tight_layout()
     plt.savefig(os.path.join(data_dir, "morris_mean_day_35_post_dox.svg"))
     plt.gca()
+    return
+
+
+@app.cell
+def _(mu_conf, mu_star):
+    print(f"RMA deg mu_star: {mu_star[-1, 2]} +- {mu_conf[-1, 2]}")
+    print(f"tTA-TetO Kd: {mu_star[-1, 13]} +- {mu_conf[-1, 13]}")
+
+    print(f"Dox Kd mu_star: {mu_star[-1, 10]} +- {mu_conf[-1, 10]}")
+    print(f"tTA prod mu_star: {mu_star[-1, 11]} +- {mu_conf[-1, 11]}")
+    print(f"tTA deg mu_star: {mu_star[-1, 12]} +- {mu_conf[-1, 12]}")
     return
 
 
@@ -420,6 +438,13 @@ def _(data_dir, idx, labels, os, plt, sb, sigma):
 
 
 @app.cell
+def _(sigma):
+    print(f"RMA deg sigma: {sigma[192, 2]}")
+    print(f"tTA-TetO Kd: {sigma[192, 13]}")
+    return
+
+
+@app.cell
 def _(data_dir, idx, labels, os, plt, sb, sigma):
     _fig, _ax = plt.subplots()
     _ax.bar(
@@ -428,7 +453,7 @@ def _(data_dir, idx, labels, os, plt, sb, sigma):
         color='lightgrey'
     )
 
-    plt.title("Day 1 post dox withdrawal")
+    plt.title("Day 35 post dox withdrawal")
     plt.ylabel("Std. Morris Sensitivty, $\\sigma$")
     for _label in _ax.get_xticklabels():
         _label.set_rotation(75)
@@ -437,6 +462,17 @@ def _(data_dir, idx, labels, os, plt, sb, sigma):
     plt.tight_layout()
     plt.savefig(os.path.join(data_dir, "morris_std_day_35_post_dox.svg"))
     plt.gca()
+    return
+
+
+@app.cell
+def _(sigma):
+    print(f"RMA deg sigma: {sigma[-1, 2]}")
+    print(f"tTA-TetO Kd: {sigma[-1, 13]}")
+
+    print(f"Dox Kd sigma: {sigma[-1, 10]}")
+    print(f"tTA prod sigma: {sigma[-1, 11]}")
+    print(f"tTA deg sigma: {sigma[-1, 12]}")
     return
 
 

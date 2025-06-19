@@ -2,7 +2,7 @@ from .abstract import AbstractModel
 from ..units import Time, Concentration
 from .dox import DoxPK, DoxPKConfig
 from jaxtyping import PyTree
-from diffrax import ODETerm
+from diffrax import ODETerm, AbstractTerm
 
 
 class TetRMA(AbstractModel):
@@ -10,7 +10,6 @@ class TetRMA(AbstractModel):
     Tet-Off gated RMA expression model.
 
     Attributes:
-
         rma_prod_rate (float): RMA production rate (concentration/time).
         rma_rt_rate (float): RMA reverse transcytosis rate (1/time).
         rma_deg_rate (float): RMA degradation rate (1/time).
@@ -93,5 +92,5 @@ class TetRMA(AbstractModel):
 
         return dbrain_rma, dplasma_rma, dta, dbrain_dox, dplasma_dox
 
-    def _terms(self):
+    def _terms(self) -> AbstractTerm:
         return ODETerm(self._model)

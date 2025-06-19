@@ -48,7 +48,7 @@ def _(DoxPKConfig):
     dox_model_config = DoxPKConfig(
         vehicle_intake_rate=1.875e-4, # mg food / hr - 4.5 mg / day
         bioavailability=0.90,
-        vehicle_dose=40 * dox_hyclate_percent, # mg / kg food
+        dose=40 * dox_hyclate_percent, # mg / kg food
         absorption_rate=0.8, # 1/hr
         elimination_rate=0.2, # 1 / hr
         brain_transport_rate=0.2, # 1/ hr
@@ -260,6 +260,41 @@ def _(cno_1mg_fit, data_dir, os, plt, sb, solution):
 
     plt.savefig(os.path.join(data_dir, "cno_tta_prediction_all.svg"))
     plt.gca()
+    return
+
+
+@app.cell
+def _(jnp, solution):
+    jnp.max(solution.ys[1])
+    return
+
+
+@app.cell
+def _(cno_1mg_fit, jnp):
+    jnp.max(cno_1mg_fit[1])
+    return
+
+
+@app.cell
+def _(cno_1mg_fit, jnp, solution):
+    jnp.max(solution.ys[2]) - jnp.max(cno_1mg_fit[2])
+    return
+
+
+@app.cell
+def _(cno_1mg_fit, jnp, solution):
+    jnp.max(solution.ys[9]) - jnp.max(cno_1mg_fit[9])
+    return
+
+
+@app.cell
+def _(cno_1mg_fit, jnp, solution):
+    jnp.max(solution.ys[7]) - jnp.max(cno_1mg_fit[7])
+    return
+
+
+@app.cell
+def _():
     return
 
 

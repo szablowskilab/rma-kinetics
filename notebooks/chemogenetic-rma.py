@@ -50,7 +50,7 @@ def _(DoxPKConfig):
     dox_model_config = DoxPKConfig(
         vehicle_intake_rate=1.875e-4, # mg food / hr - 4.5 mg / day
         bioavailability=0.90,
-        vehicle_dose=40 * dox_hyclate_percent, # mg / kg food
+        dose=40 * dox_hyclate_percent, # mg / kg food
         absorption_rate=0.8, # 1/hr
         elimination_rate=0.2, # 1 / hr
         brain_transport_rate=0.2, # 1/ hr
@@ -704,6 +704,13 @@ def _(data_dir, jnp, mu_conf, mu_star, os, plt, sb):
 
 
 @app.cell
+def _(mu_conf, mu_star):
+    print(f"RMA prod mu_star: {mu_star[-1,0]} +- {mu_conf[-1, 0]}")
+    print(f"tTA deg mu_star: {mu_star[-1,5]} +- {mu_conf[-1, 5]}")
+    return
+
+
+@app.cell
 def _(data_dir, idx, os, plt, sa_labels, sb, sigma):
     _fig, _ax = plt.subplots()
     _ax.bar(
@@ -720,6 +727,18 @@ def _(data_dir, idx, os, plt, sa_labels, sb, sigma):
     plt.tight_layout()
     plt.savefig(os.path.join(data_dir, "morris_std_tf.svg"))
     plt.gca()
+    return
+
+
+@app.cell
+def _(sigma):
+    print(f"RMA prod sigma: {sigma[-1,0]}")
+    print(f"tTA deg sigma: {sigma[-1,5]}")
+    return
+
+
+@app.cell
+def _():
     return
 
 

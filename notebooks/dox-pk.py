@@ -61,6 +61,8 @@ def _(DoxPK, DoxPKConfig):
 
 @app.cell
 def _(Kvaerno3, ODETerm, PIDController, SaveAt, diffeqsolve, dox_pk, jnp):
+    plasma_dox_ss =dox_pk.absorption_rate/dox_pk.elimination_rate*dox_pk.intake_rate
+    brain_dox_ss = dox_pk.brain_transport_rate / dox_pk.plasma_transport_rate * plasma_dox_ss
     sol = diffeqsolve(
         ODETerm(dox_pk._model),
         t0=0,
@@ -89,8 +91,8 @@ def _(FuncFormatter, jnp, plt, sb):
 
         plt.legend(frameon=False)
 
-        plt.tight_layout()
         sb.despine()
+        plt.tight_layout()
         plt.show()
     return (plot_dox_concentration,)
 
@@ -214,7 +216,7 @@ def _(fs, jnp, morris, sols, t0, t1):
 
 
 @app.cell
-def _(morris_conf, morris_means, plot_mu, plt, x):
+def _(morris_conf, morris_means, plot_mu, plt, sb, x):
     labels = [
         "Iv", # vehicle intake rate
         "F", # bioavailability
@@ -228,21 +230,28 @@ def _(morris_conf, morris_means, plot_mu, plt, x):
 
     plt.xlabel("Time (hr)")
     plt.ylabel("Morris µ*")
-    plt.legend(frameon=False)
+    plt.legend(frameon=False, bbox_to_anchor=(1,1))
+    sb.despine()
     plt.tight_layout()
     plt.show()
     return (labels,)
 
 
 @app.cell
-def _(labels, morris_std, plot_sigma, plt, x):
+def _(labels, morris_std, plot_sigma, plt, sb, x):
     sigma_fig, sigma_ax = plot_sigma(x, morris_std, labels)
 
     plt.xlabel("Time (hr)")
     plt.ylabel("Morris std.")
-    plt.legend(frameon=False)
+    plt.legend(frameon=False, bbox_to_anchor=(1,1))
+    sb.despine()
     plt.tight_layout()
     plt.show()
+    return
+
+
+@app.cell
+def _():
     return
 
 
