@@ -19,7 +19,10 @@ import matplotlib.pyplot as plt
 
 SPECIES_MAP = {
     "Brain RMA": 0,
-    "Plasma RMA": 1
+    "Plasma RMA": 1,
+    "tTA": 2,
+    "Brain Dox": 3,
+    "Plasma Dox": 4
 }
 
 class Solution(EqxModule):
@@ -40,6 +43,42 @@ class Solution(EqxModule):
         """Get plasma RMA solution"""
         return self._get_species("Plasma RMA")
 
+    @property
+    def tta(self):
+        return self._get_species("tTA")
+
+    @property
+    def brain_dox(self):
+        return self._get_species("Brain Dox")
+
+    @property
+    def dreadd(self):
+        return self._get_species("DREADD")
+
+    @property
+    def peritoneal_cno(self):
+        return self._get_species("Peritoneal CNO")
+
+    @property
+    def brain_cno(self):
+        return self._get_species("Brain CNO")
+
+    @property
+    def plasma_cno(self):
+        return self._get_species("Plasma CNO")
+
+    @property
+    def brain_clz(self):
+        return self._get_species("Brain CLZ")
+
+    @property
+    def plasma_clz(self):
+        return self._get_species("Plasma CLZ")
+
+    @property
+    def plasma_dox(self):
+        return self._get_species("Plasma Dox")
+
     def plot_plasma_rma(self):
         """Plot plasma RMA solution"""
         self._plot_species("Plasma RMA")
@@ -55,7 +94,7 @@ class Solution(EqxModule):
         idx = SPECIES_MAP[label]
         if self._diffsol.ys is not None and len(self._diffsol.ys) >= idx:
             plt.plot(self._diffsol.ts, self._diffsol.ys[idx], 'k')
-            plt.xlabel(f"Time ({Time[self.time_units]}")
+            plt.xlabel(f"Time ({Time[self.time_units]})")
             plt.ylabel(f"{label} ({Concentration[self.conc_units]})")
         else:
             raise ValueError("Solution is empty")
