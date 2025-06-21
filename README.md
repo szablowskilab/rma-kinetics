@@ -28,10 +28,17 @@ model = ConstitutiveRMA(
 )
 
 # simulate model and plot plasma RMA
-result = model.simulate(t0=0, t1=72, y0=(0,0))
-result.plot_plasma_rma()
+solution = model.simulate(t0=0, t1=72, y0=(0,0))
+solution.plot_plasma_rma()
 plt.gcf()
 ```
+
+## Web App
+
+To run locally, install marimo (available in the development dependencies) in
+your virtual environment and run `marimo run app/main.py` or use the provided Just
+command `just app-serve` to start the server.
+Alternatively, if using uvx, `uvx marimo run app/main.py`.
 
 ## Notebooks
 
