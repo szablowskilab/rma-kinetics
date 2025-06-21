@@ -21,25 +21,43 @@ uv add rma_kinetics
 ## Quick Start
 
 ```python
+from rma_kinetics.models import ConstitutiveRMA
+import matplotlib.pyplot as plt
+
+# initialize constitutive RMA model
+model = ConstitutiveRMA(
+    rma_prod_rate=7e-3,
+    rma_rt_rate=1,
+    rma_deg_rate=7e-3
+)
+
+# simulate model and plot plasma RMA
+solution = model.simulate(t0=0, t1=72, y0=(0,0))
+
+print(f"Plasma RMA at final timepoint: {solution.plasma_rma[-1]}")
+print(f"Brain RMA at final timepoint: {solution.brain_rma[-1]}")
+
+solution.plot_plasma_rma()
+plt.gcf()
 ```
 
 All RMA models can be run by calling the `simulate` method detailed below.
 
-### Method: `simulate`
+**Method:** `simulate`
 
 :::rma_kinetics.models.AbstractModel.simulate
 
-Please see the [API reference]() or [examples]() for more details.
+Please see the [API reference](./api/models/constitutive.md) or [examples](https://github.com/szablowskilab/rma-kinetics/tree/main/examples) for more details.
 
 ## Citation
 
 If you found this library useful, please cite: [(bioarxiv link)]()
 
 ```bibtex
-@paper{buitrago2025rma
+@article{buitrago2025rma
   title={Modeling synthetic serum markers for monitoring deep tissue gene expression},
   author={Nicolas Buitrago, Josefina Brau, Jerzy Szablowski},
   year={2025},
 }
 ```
-Also consider starring the project on [GitHub]().
+Also consider starring the project on [GitHub](https://github.com/szablowskilab/rma-kinetics).
