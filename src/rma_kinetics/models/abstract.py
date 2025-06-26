@@ -1,7 +1,10 @@
 from abc import abstractmethod
 from equinox import Module as EqxModule
+from jax import numpy as jnp
 from ..units import Time, Concentration
 from diffrax import (
+    AbstractProgressMeter,
+    NoProgressMeter,
     Solution as DiffSol,
     diffeqsolve,
     SaveAt,
@@ -11,7 +14,7 @@ from diffrax import (
     AbstractSolver,
     RecursiveCheckpointAdjoint,
     AbstractAdjoint,
-    AbstractTerm
+    AbstractTerm,
 )
 from jaxtyping import PyTree
 import matplotlib.pyplot as plt
@@ -21,8 +24,12 @@ SPECIES_MAP = {
     "Brain RMA": 0,
     "Plasma RMA": 1,
     "tTA": 2,
-    "Brain Dox": 3,
-    "Plasma Dox": 4
+    # for brain species
+    # (ignoring plasma concentrations of these, but still accessible in Solution._diffsol.ys)
+    "Dox": 3,
+    "hM3Dq": 5,
+    "CNO": 7,
+    "CLZ": 9
 }
 
 class Solution(EqxModule):
@@ -35,53 +42,62 @@ class Solution(EqxModule):
 
     @property
     def brain_rma(self):
-        """Get brain RMA solution"""
-        return self.get_species("Brain RMA")
+        """Get Brain RMA solution."""
+        return self._get_species("Brain RMA")
 
     @property
     def plasma_rma(self):
-        """Get plasma RMA solution"""
+        """Get Plasma RMA solution."""
         return self._get_species("Plasma RMA")
 
     @property
     def tta(self):
+        """Get tTA solution."""
         return self._get_species("tTA")
 
     @property
-    def brain_dox(self):
-        return self._get_species("Brain Dox")
+    def dox(self):
+        """Get dox solution."""
+        return self._get_species("Dox")
 
     @property
-    def dreadd(self):
-        return self._get_species("DREADD")
+    def hm3dq(self):
+        """Get hM3Dq solution."""
+        return self._get_species("hM3Dq")
 
     @property
-    def peritoneal_cno(self):
-        return self._get_species("Peritoneal CNO")
+    def cno(self):
+        """Get CNO solution."""
+        return self._get_species("CNO")
 
     @property
-    def brain_cno(self):
-        return self._get_species("Brain CNO")
-
-    @property
-    def plasma_cno(self):
-        return self._get_species("Plasma CNO")
-
-    @property
-    def brain_clz(self):
-        return self._get_species("Brain CLZ")
-
-    @property
-    def plasma_clz(self):
-        return self._get_species("Plasma CLZ")
-
-    @property
-    def plasma_dox(self):
-        return self._get_species("Plasma Dox")
+    def clz(self):
+        """Get CLZ solution."""
+        return self._get_species("CLZ")
 
     def plot_plasma_rma(self):
-        """Plot plasma RMA solution"""
+        """Plot plasma RMA solution."""
         self._plot_species("Plasma RMA")
+
+    def plot_brain_rma(self):
+        """Plot brain RMA solution."""
+        self._plot_species("Brain RMA")
+
+    def plot_tta(self):
+        """Plot tTA solution."""
+        self._plot_species("tTA")
+
+    def plot_dox(self):
+        """Plot dox solution."""
+        self._plot_species("Dox")
+
+    def plot_cno(self):
+        """Plot CNO solution."""
+        self._plot_species("CNO")
+
+    def plot_clz(self):
+        """Plot CLZ solution."""
+        self._plot_species("CLZ")
 
     def _get_species(self, label: str):
         idx = SPECIES_MAP[label]
@@ -90,12 +106,13 @@ class Solution(EqxModule):
         else:
             raise ValueError("Solution is empty")
 
-    def _plot_species(self, label: str):
-        idx = SPECIES_MAP[label]
-        if self._diffsol.ys is not None and len(self._diffsol.ys) >= idx:
-            plt.plot(self._diffsol.ts, self._diffsol.ys[idx], 'k')
+    def _plot_species(self, label: str, vd: float | None = None):
+        spc_idx = SPECIES_MAP[label]
+        if self._diffsol.ys is not None and len(self._diffsol.ys) >= spc_idx:
+            plt.plot(self._diffsol.ts, self._diffsol.ys[spc_idx], 'k')
             plt.xlabel(f"Time ({Time[self.time_units]})")
             plt.ylabel(f"{label} ({Concentration[self.conc_units]})")
+            plt.tight_layout()
         else:
             raise ValueError("Solution is empty")
 
@@ -161,14 +178,15 @@ class AbstractModel(EqxModule):
             self,
             t0: float,
             t1: float,
-            dt0: float | None=None,
-            y0: PyTree[float]=(0,0),
-            saveat: SaveAt = SaveAt(dense=True),
+            y0: PyTree[float],
+            dt0: float | None = None,
+            sampling_rate: float = 1,
             stepsize_controller: AbstractStepSizeController = PIDController(rtol=1e-5, atol=1e-5),
             max_steps: int = 4096,
             solver: AbstractSolver = Kvaerno3(),
             adjoint: AbstractAdjoint = RecursiveCheckpointAdjoint(),
             throw: bool = True,
+            progress_meter: AbstractProgressMeter = NoProgressMeter()
     ):
         """
         Simulates model within the given time interval.
@@ -178,11 +196,10 @@ class AbstractModel(EqxModule):
         Arguments:
             t0 (float): Start time of integration.
             t1 (float): Stop time of integration.
+            y0 (PyTree[float]): Tuple of initial conditions.
             dt0 (float | None`): Initial step size if using adaptive
-                step sizes, or size of all steps if using constant stepsize
-                (Default = None).
-            y0 (PyTree[float]): Initial conditions.
-            saveat (SaveAt): Times to save solution.
+                step sizes, or size of all steps if using constant stepsize.
+            sampling_rate (float): Sampling rate for saving solution.
             stepsize_controller (AbstractStepSizeController`): Determines
                 how to change step size during integration.
             max_steps (int): Max number of steps before stopping.
@@ -193,6 +210,7 @@ class AbstractModel(EqxModule):
         Returns:
             solution (Solution): A solution object (parent of diffrax.Solution) with added plotting methods.
         """
+        saveat = SaveAt(ts=jnp.linspace(t0, t1, int(t1*sampling_rate)))
         diffsol = diffeqsolve(
             self._terms(),
             solver,
@@ -204,7 +222,8 @@ class AbstractModel(EqxModule):
             stepsize_controller=stepsize_controller,
             max_steps=max_steps,
             adjoint=adjoint,
-            throw=throw
+            throw=throw,
+            progress_meter=progress_meter
         )
 
         return Solution(diffsol, self.time_units, self.conc_units)

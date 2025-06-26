@@ -62,15 +62,15 @@ if __name__ == "__main__":
         print(f"period {i+1}")
         solution = model.simulate(t0=0, t1=168, y0=y0, saveat=SaveAt(ts=window_ts))
         plasma_rma = jnp.concatenate([plasma_rma, solution.plasma_rma])
-        brain_dox = jnp.concatenate([brain_dox, solution.brain_dox])
+        brain_dox = jnp.concatenate([brain_dox, solution.dox])
 
         # update the state for the next run
         y0 = (
             solution.brain_rma[-1],
             solution.plasma_rma[-1],
             solution.tta[-1],
-            solution.brain_dox[-1],
-            solution.plasma_dox[-1]
+            solution.dox[-1],
+            solution._diffsol.ys[4][-1]
         )
 
     # plot RMA and dox

@@ -6,7 +6,7 @@ from jaxtyping import PyTree
 
 class ConstitutiveRMA(AbstractModel):
     """
-    Model of constitutive RMA production.
+    Simple constitutive expression of released markers of activity.
 
     Attributes:
         rma_prod_rate (float): RMA production rate (concentration/time).

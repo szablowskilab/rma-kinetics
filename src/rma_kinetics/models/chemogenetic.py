@@ -2,10 +2,21 @@ from .cno import CnoPK, CnoPKConfig
 from .dox import DoxPKConfig
 from .tet_induced import TetRMA
 from ..units import Time, Concentration
+from .abstract import Solution
 
 from jaxtyping import PyTree
 from jax import numpy as jnp
-from jax.lax import cond as jcond
+from diffrax import (
+    diffeqsolve,
+    SaveAt,
+    AbstractStepSizeController,
+    PIDController,
+    Kvaerno3,
+    AbstractSolver,
+    RecursiveCheckpointAdjoint,
+    AbstractAdjoint,
+    Solution as DiffSol
+)
 
 
 class ChemogeneticRMA(TetRMA):
@@ -102,20 +113,9 @@ class ChemogeneticRMA(TetRMA):
         self.dq_coop = dq_coop
         self.leaky_tta_prod_rate = leaky_tta_prod_rate
 
-    def _cno_inj_control(self, t, y, args=None):
-        control = jnp.zeros_like(y)
-        return control.at[6].set(1.0)
-
     def _model(self, t: float, y: PyTree[float], args=None) -> PyTree[float]:
 
         brain_rma, plasma_rma, ta, brain_dox, plasma_dox, dreadd, peritoneal_cno, brain_cno, plasma_cno, brain_clz, plasma_clz = y
-
-        # CNO injection
-        # peritoneal_cno = jcond(
-        #     t == self.cno_t0,
-        #     lambda: peritoneal_cno + self.cno.cno_nmol,
-        #     lambda: peritoneal_cno
-        # )
 
         dbrain_rma, dplasma_rma, dbrain_dox, dplasma_dox = self._tet_rma_model(t, (brain_rma, plasma_rma, ta, brain_dox, plasma_dox))
 
@@ -146,3 +146,100 @@ class ChemogeneticRMA(TetRMA):
             dbrain_clz,
             dplasma_clz
         )
+
+    def simulate(
+            self,
+            t0: float,
+            t1: float,
+            dt0: float | None=None,
+            sampling_rate: float=1,
+            y0: PyTree[float]=(0,0),
+            stepsize_controller: AbstractStepSizeController = PIDController(rtol=1e-5, atol=1e-5),
+            max_steps: int = 4096,
+            solver: AbstractSolver = Kvaerno3(),
+            adjoint: AbstractAdjoint = RecursiveCheckpointAdjoint(),
+            throw: bool = True,
+    ):
+        """
+        """
+        # just assume that save at has ts
+        if self.cno_t0 == 0:
+            saveat = SaveAt(ts=jnp.linspace(t0, t1, int(t1*sampling_rate)))
+            solution = diffeqsolve(
+                self._terms(),
+                solver,
+                t0,
+                t1,
+                dt0,
+                y0,
+                saveat=saveat,
+                stepsize_controller=stepsize_controller,
+                max_steps=max_steps,
+                adjoint=adjoint,
+                throw=throw
+            )
+
+            return solution
+
+        pre_cno_saveat = SaveAt(ts=jnp.linspace(t0, self.cno_t0, int(self.cno_t0*sampling_rate)))
+        pre_cno = diffeqsolve(
+            self._terms(),
+            solver,
+            t0,
+            self.cno_t0,
+            dt0,
+            y0,
+            saveat=pre_cno_saveat,
+            stepsize_controller=stepsize_controller,
+            max_steps=max_steps,
+            adjoint=adjoint,
+            throw=throw
+        )
+
+        if pre_cno.ys is None or pre_cno.ts is None:
+            raise ValueError("Solution or saved time arrays are empty, but the solver didn't throw an error!")
+
+        y1 = [y[-1] for y in pre_cno.ys]
+        y1[6] += self.cno.cno_nmol
+
+        post_cno_saveat = SaveAt(ts=jnp.linspace(self.cno_t0, t1, int(t1*sampling_rate)))
+        post_cno = diffeqsolve(
+            self._terms(),
+            solver,
+            self.cno_t0,
+            t1,
+            dt0,
+            tuple(y1),
+            saveat=post_cno_saveat,
+            stepsize_controller=stepsize_controller,
+            max_steps=max_steps,
+            adjoint=adjoint,
+            throw=throw
+        )
+
+        if pre_cno.ys is None or pre_cno.ts is None:
+            raise ValueError("Solution or saved time arrays are empty, but the solver didn't throw an error!")
+
+        ts_full = jnp.concatenate([pre_cno.ts[:-1], post_cno.ts])
+        ys_full = [jnp.concatenate([pre_ys[:-1], post_ys]) for pre_ys, post_ys in zip(pre_cno.ys, post_cno.ys)]
+        # convert plasma/brain CNO/CLZ to concentrations
+        ys_full[7] /= self.cno.cno_brain_vd
+        ys_full[8] /= self.cno.cno_plasma_vd
+        ys_full[9] /= self.cno.clz_brain_vd
+        ys_full[10] /= self.cno.clz_plasma_vd
+
+        diffsol = DiffSol(
+            t0=t0,
+            t1=t1,
+            ts=ts_full,
+            ys=tuple(ys_full),
+            interpolation=post_cno.interpolation,
+            stats=post_cno.stats,
+            result=post_cno.result,
+            solver_state=post_cno.solver_state,
+            controller_state=post_cno.controller_state,
+            made_jump=post_cno.made_jump,
+            event_mask=post_cno.event_mask
+        )
+
+        return Solution(diffsol, self.time_units, self.conc_units)
