@@ -34,7 +34,7 @@ jobs:
       - name: Export notebooks
         run: |
           # build the app
-          uv sync
+          sudo apt install libmpich-dev # needed for diffopt in dev deps
           uv run marimo export html-wasm app/main.py -o _site --mode run
           # build the docs
           uv run mkdocs build --site-dir _site/docs
