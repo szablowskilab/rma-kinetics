@@ -37,8 +37,8 @@ jobs:
           sudo apt install libmpich-dev # needed for diffopt in dev deps
           uv run marimo export html-wasm app/main.py -o _site --mode run
           # build the docs
-          uv pip install -e .
-          uv run --group docs mkdocs build --site-dir _site/docs
+          #uv pip install -e .
+          #uv run --group docs mkdocs build --site-dir _site/docs
 
       # Upload the generated site as an artifact for the deploy job
       - name: Upload artifact
