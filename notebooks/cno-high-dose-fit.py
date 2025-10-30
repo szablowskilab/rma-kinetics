@@ -8,7 +8,7 @@ app = marimo.App(width="medium")
 def _():
     from rma_kinetics.models import ChemogeneticRMA, DoxPKConfig, CnoPKConfig
     from gluc import get_gluc_conc
-    from diffrax import PIDController, SaveAt, Kvaerno5
+    from diffrax import PIDController, SaveAt, Kvaerno5, diffeqsolve
     from jax import config, numpy as jnp
     from diffopt.multiswarm import ParticleSwarm, get_best_loss_and_params
     from functools import partial
@@ -31,6 +31,7 @@ def _():
         PIDController,
         SaveAt,
         data_dir,
+        diffeqsolve,
         get_gluc_conc,
         jnp,
         os,
@@ -91,6 +92,7 @@ def _(
     SaveAt,
     brain_dox_ss,
     cno_model_config,
+    diffeqsolve,
     dox_model_config,
     gluc_df,
     jnp,
@@ -117,7 +119,7 @@ def _(
         tta_deg_rate=params[5],
         tta_kd=params[6],
         cno_model_config=cno_model_config,
-        cno_t0=48.0,
+        cno_t0=0.,
         cno_ec50=params[7],
         clz_ec50=params[8],
         dq_prod_rate=params[9],
@@ -127,7 +129,8 @@ def _(
         leaky_tta_prod_rate=params[12]
     )
 
-    dox_withdrawal = rma_model.simulate(
+    dox_withdrawal = diffeqsolve(
+        rma_model._terms(),
         t0=0,
         t1=48,
         dt0=0.1,
@@ -137,8 +140,8 @@ def _(
         saveat=SaveAt(t1=True),
         throw=True,
         solver=Kvaerno5()
-    )
 
+    )
 
     y0 = list(dox_withdrawal.ys)
     y0[6] += cno_model_config.cno_nmol
@@ -150,7 +153,7 @@ def _(
         #y0=(0, 0, 0, brain_dox_ss, plasma_dox_ss, 10, 0, 0, 0, 0, 0),
         y0=tuple(y0),
         stepsize_controller=PIDController(atol=1e-5, rtol=1e-5),
-        saveat=SaveAt(ts=jnp.linspace(0, 48, 48*6)),
+        sampling_rate=6,
         throw=False,
         solver=Kvaerno5()
     )
@@ -242,14 +245,14 @@ def _(
 def _(cno_1mg_fit, data_dir, os, plt, sb, solution):
     _colors = sb.color_palette(n_colors=3)
     _fig, _ax = plt.subplots(1, 2, figsize=(6.4, 3.5))
-    _ax[0].plot(solution.ts, cno_1mg_fit[9], color=_colors[0], label="Brain CLZ (1mg/kg CNO)")
     _ax[0].plot(solution.ts, solution.ys[9], color=_colors[1], label="Brain CLZ (2.5mg/kg CNO")
+    _ax[0].plot(solution.ts, cno_1mg_fit[9], color=_colors[0], label="Brain CLZ (1mg/kg CNO)")
 
-    _ax[0].plot(solution.ts, cno_1mg_fit[7], linestyle=":", color=_colors[0], label="Brain CNO (1mg/kg CNO)")
     _ax[0].plot(solution.ts, solution.ys[7], linestyle=":", color=_colors[1], label="Brain CNO (2.5mg/kg CNO)")
+    _ax[0].plot(solution.ts, cno_1mg_fit[7], linestyle=":", color=_colors[0], label="Brain CNO (1mg/kg CNO)")
     _ax[0].set_xlabel("Time (hr)")
     _ax[0].set_ylabel("CNO or CLZ (nM)")
-    _ax[0].legend(["CNO", "CLZ"], frameon=False)
+    _ax[0].legend(["CLZ", "CNO"], frameon=False)
 
     _ax[1].plot(solution.ts, cno_1mg_fit[2])
     _ax[1].plot(solution.ts, solution.ys[2])
@@ -283,13 +286,44 @@ def _(cno_1mg_fit, jnp, solution):
 
 @app.cell
 def _(cno_1mg_fit, jnp, solution):
+    print(f"2.5mg/kg CNO - max tTA: {jnp.max(solution.ys[2])}")
+    print(f"Tmax tTA 2.5mg/kg CNO: {solution.ts[jnp.argmax(solution.ys[2])]}")
+
+    print(f"1mg/kg CNO - max tTA: {jnp.max(cno_1mg_fit[2])}")
+    print(f"Tmax tTA 1mg/kg CNO: {solution.ts[jnp.argmax(cno_1mg_fit[2])]}")
+    return
+
+
+@app.cell
+def _(cno_1mg_fit, jnp, solution):
+    # brain clz
     jnp.max(solution.ys[9]) - jnp.max(cno_1mg_fit[9])
+    return
+
+
+@app.cell
+def _():
     return
 
 
 @app.cell
 def _(cno_1mg_fit, jnp, solution):
     jnp.max(solution.ys[7]) - jnp.max(cno_1mg_fit[7])
+    # brain cno
+    print(f"2.5mg/kg CNO max CNO: {jnp.max(solution.ys[7])}")
+    print(f"2.5mg/kg CNO max CLZ: {jnp.max(solution.ys[9])}")
+
+    print(f"1mg/kg CNO max CNO: {jnp.max(cno_1mg_fit[7])}")
+    print(f"1mg/kg CNO max CLZ: {jnp.max(cno_1mg_fit[9])}")
+    return
+
+
+@app.cell
+def _(cno_1mg_fit, jnp, solution):
+    print(f"Tmax CNO 2.5mg/kg CNO: {solution.ts[jnp.argmax(solution.ys[7])]}")
+    print(f"Tmax CLZ 2.5mg/kg CNO: {solution.ts[jnp.argmax(solution.ys[9])]}")
+    print(f"Tmax CNO 1mg/kg CNO: {solution.ts[jnp.argmax(cno_1mg_fit[7])]}")
+    print(f"Tmax CLZ 1mg/kg CNO: {solution.ts[jnp.argmax(cno_1mg_fit[9])]}")
     return
 
 

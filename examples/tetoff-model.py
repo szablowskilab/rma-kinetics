@@ -39,7 +39,6 @@ if __name__ == "__main__":
         t1=t1,
         dt0=0.1,
         y0=y0,
-        saveat=SaveAt(ts=jnp.linspace(t0, t1, t1))
     )
 
     # print the plasma RMA concentration at the final timepoint

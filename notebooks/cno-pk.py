@@ -8,16 +8,13 @@ app = marimo.App(width="medium")
 def _():
     from rma_kinetics.models import CnoPK, CnoPKConfig
 
-    from diffrax import PIDController, SaveAt, diffeqsolve, Kvaerno3, ODETerm, ConstantStepSize
+    from diffrax import PIDController, SaveAt, diffeqsolve, Kvaerno3, ODETerm
     from jax import numpy as jnp
-    from jax import config, jit, vmap
-    from jax.lax import cond
+    from jax import config, vmap
     from functools import partial
     from diffopt.multiswarm import ParticleSwarm, get_best_loss_and_params
-    from optimistix import minimise, NelderMead
     from sklearn.metrics import r2_score
 
-    import marimo as mo
     import seaborn as sb
     import matplotlib.pyplot as plt
     import polars as pl
@@ -29,7 +26,6 @@ def _():
         CnoPK,
         CnoPKConfig,
         Kvaerno3,
-        NelderMead,
         ODETerm,
         PIDController,
         ParticleSwarm,
@@ -37,7 +33,6 @@ def _():
         diffeqsolve,
         get_best_loss_and_params,
         jnp,
-        minimise,
         os,
         partial,
         pl,
@@ -90,13 +85,20 @@ def _(data_agg, jnp, pl):
     ) -> jnp.ndarray:
         """Get mean concentrations at each timepoint in the dataframe"""
         observed = df.group_by(x).agg([
-            pl.col(y).mean().fill_null(0)
+            pl.col(y).mean().fill_null(1e-6)
         ])
 
         return observed.sort(x, descending=False)[y].to_jax()
 
     observed = jnp.array([get_mean_concentrations(df) for df in data_agg])
     return (observed,)
+
+
+@app.cell
+def _(observed):
+
+    observed
+    return
 
 
 @app.cell
@@ -192,11 +194,12 @@ def _(
             predicted_nmol.ys[4] / model.clz_brain_vd,
         ])
 
+
         #plasma_cno_res = jnp.sum((observed[0] - predicted[0])**2)
-        plasma_cno_res = jnp.sum((observed[0] - predicted[0])**2) / len(observed[0]) * weights[0]
-        plasma_clz_res = jnp.sum((observed[1] - predicted[1])**2) / len(observed[1]) * weights[2]
-        brain_cno_res = jnp.sum((observed[2] - predicted[2])**2) / len(observed[2]) * weights[1]
-        brain_clz_res = jnp.sum((observed[3] - predicted[3])**2) / len(observed[3]) * weights[3]
+        plasma_cno_res = jnp.sum((observed[0] - predicted[0])**2) * weights[0]
+        plasma_clz_res = jnp.sum((observed[1] - predicted[1])**2) * weights[1]
+        brain_cno_res = jnp.sum((observed[2] - predicted[2])**2) * weights[2]
+        brain_clz_res = jnp.sum((observed[3] - predicted[3])**2) * weights[3]
 
         wssr = plasma_cno_res + brain_cno_res + plasma_clz_res + brain_clz_res
         return wssr
@@ -205,7 +208,7 @@ def _(
 
 @app.cell
 def _(ParticleSwarm, jnp, loss, observed, partial):
-    weights = jnp.array([0.5, 1.25, 2.5, 2])
+    weights = jnp.array([1, 2.5, 1.25, 10])
 
     bounds = [
         (0.3, 0.5), # cno absorption
@@ -225,7 +228,7 @@ def _(ParticleSwarm, jnp, loss, observed, partial):
 
     loss_partial = partial(loss, args=(observed, weights))
     swarm = ParticleSwarm(
-        nparticles=100,
+        nparticles=300,
         ndim=13,
         xlow=[b[0] for b in bounds],
         xhigh=[b[1] for b in bounds],
@@ -340,7 +343,7 @@ def _(
 
         plasma_cno_r2 = r2_score(observed[0], predicted_plasma_cno)
         plasma_clz_r2 = r2_score(observed[1], predicted_plasma_clz)
-        brain_cno_r2 = r2_score(observed[2][:-1], predicted_brain_cno[:-1])
+        brain_cno_r2 = r2_score(observed[2], predicted_brain_cno)
         brain_clz_r2 = r2_score(observed[3], predicted_brain_clz)
 
         print("-------------------------------")
@@ -380,24 +383,8 @@ def _(best_params, inspect_fit, plt):
 
 
 @app.cell
-def _(NelderMead, best_params, jnp, loss, minimise, observed):
-    #solver = LevenbergMarquardt(rtol=1e-8, atol=1e-8, verbose=frozenset({"step", "accepted", "loss", "step_size"}))
-    solver = NelderMead(rtol=1e-8, atol=1e-8)
-    finetuned_params = minimise(loss, solver, best_params, args=(observed, jnp.array([0, 2, 0, 1])), max_steps=20000, throw=True)
-
-    return (finetuned_params,)
-
-
-@app.cell
-def _(finetuned_params, inspect_fit, plt):
-    inspect_fit(finetuned_params.value)
-    plt.gca()
-    return
-
-
-@app.cell
-def _(finetuned_params, jnp):
-    param_estimates = jnp.concatenate([finetuned_params.value[0:9]*60, finetuned_params.value[9:]])
+def _(best_params, jnp):
+    param_estimates = jnp.concatenate([best_params[0:9]*60, best_params[9:]])
     return (param_estimates,)
 
 

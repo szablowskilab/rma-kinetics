@@ -1,5 +1,8 @@
 # Abstract Model
 
 ::: rma_kinetics.models.AbstractModel
-
-::: rma_kinetics.models.Solution
+    options:
+      members:
+        - simulate
+        - _terms
+        - _model

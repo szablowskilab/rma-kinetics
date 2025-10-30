@@ -15,4 +15,7 @@ $$
 
 See [CnoPKConfig](./config.md) for parameter details.
 
-:::rma_kinetics.models.CnoPK
+::: rma_kinetics.models.CnoPK
+    options:
+      members:
+        - _model

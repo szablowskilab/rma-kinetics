@@ -1,5 +1,4 @@
 from rma_kinetics.models import TetRMA, DoxPKConfig
-from diffrax import SaveAt
 from jax import numpy as jnp, config as jax_config
 jax_config.update("jax_enable_x64", True)
 
@@ -60,7 +59,7 @@ if __name__ == "__main__":
         )
 
         print(f"period {i+1}")
-        solution = model.simulate(t0=0, t1=168, y0=y0, saveat=SaveAt(ts=window_ts))
+        solution = model.simulate(t0=0, t1=168, y0=y0)
         plasma_rma = jnp.concatenate([plasma_rma, solution.plasma_rma])
         brain_dox = jnp.concatenate([brain_dox, solution.dox])
 

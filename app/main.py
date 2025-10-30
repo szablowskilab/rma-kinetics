@@ -262,7 +262,7 @@ def _(concentration_units, mo, time_units):
     # cno parameters
     cno_dose = mo.ui.number(
         value=0.075,
-        label=f"Clozapine-N-oxide (CNO) dose (mg)"
+        label="Clozapine-N-oxide (CNO) dose (mg)"
     )
 
     cno_t0 = mo.ui.number(
@@ -920,8 +920,14 @@ def _(mo, plt, sb, solution, species_selector):
     mo.vstack([
         mo.mpl.interactive(fig),
         species_selector,
-        mo.md("If you found this tool useful, consider citing [Buitrago et al., 2025]()")
+        #mo.md("If you found this tool useful, consider citing [Buitrago et al., 2025]()")
     ])
+
+    return
+
+
+@app.cell
+def _():
     return
 
 

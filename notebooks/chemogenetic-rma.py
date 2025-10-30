@@ -20,7 +20,7 @@ def _():
     import polars as pl
 
     config.update("jax_enable_x64", True)
-    sb.set_context('talk')
+    sb.set_theme('talk', style='ticks', font='Arial')
     data_dir = os.path.join("notebooks", "data", "dreadd_activation")
     return (
         ChemogeneticRMA,
@@ -565,11 +565,9 @@ def _(
     ChemogeneticRMA,
     Kvaerno5,
     PIDController,
-    SaveAt,
     brain_dox_ss,
     cno_model_config,
     dox_model_config,
-    jnp,
     plasma_dox_ss,
 ):
     # sensitivity analysis
@@ -596,32 +594,32 @@ def _(
             leaky_tta_prod_rate=params[12]
         )
 
-        dox_withdrawal = rma_model.simulate(
+        solution = rma_model.simulate(
             t0=0,
-            t1=48,
+            t1=96,
             dt0=0.1,
             #y0=(0, 0, 0, brain_dox_ss, plasma_dox_ss, 10, 0, 0, 0, 0, 0),
             y0=(0, 0, 0, brain_dox_ss, plasma_dox_ss, params[9], 0, 0, 0, 0, 0),
             stepsize_controller=PIDController(atol=1e-5, rtol=1e-5),
-            saveat=SaveAt(t1=True),
+            sampling_rate=1,
             throw=True,
             solver=Kvaerno5()
         )
 
-        y0 = list(dox_withdrawal.ys)
-        y0[6] += cno_model_config.cno_nmol
+        #y0 = list(dox_withdrawal.ys)
+        #y0[6] += cno_model_config.cno_nmol
 
-        solution = rma_model.simulate(
-            t0=0,
-            t1=48,
-            dt0=0.1,
+        #solution = rma_model.simulate(
+            #t0=0,
+            #t1=48,
+            #t0=0.1,
             #y0=(0, 0, 0, brain_dox_ss, plasma_dox_ss, 10, 0, 0, 0, 0, 0),
-            y0=tuple(y0),
-            stepsize_controller=PIDController(atol=1e-5, rtol=1e-5),
-            saveat=SaveAt(ts=jnp.linspace(0, 48, 48)),
-            throw=True,
-            solver=Kvaerno5()
-        )
+            #y0=tuple(y0),
+            #stepsize_controller=PIDController(atol=1e-5, rtol=1e-5),
+            #saveat=SaveAt(ts=jnp.linspace(0, 48, 48)),
+            #throw=True,
+            #solver=Kvaerno5()
+        #)
         #breakpoint()
 
         return solution.ys[1]
@@ -656,12 +654,12 @@ def _(data_dir, global_sensitivity, jnp, map_model, os):
     }
 
     morris_y, morris_sens = global_sensitivity(map_model, param_space, 250)
-    time = jnp.linspace(0, 48, 288)
+    time = jnp.linspace(0, 95, 95)
     mu_star = jnp.array([s['mu_star'] for s in morris_sens])
     mu_conf = jnp.array([s['mu_star_conf'] for s in morris_sens])
     sigma = jnp.array([s['sigma'] for s in morris_sens])
 
-    return mu_conf, mu_star, sigma
+    return mu_conf, mu_star, sigma, time
 
 
 @app.cell
@@ -711,6 +709,64 @@ def _(mu_conf, mu_star):
 
 
 @app.cell
+def _(data_dir, idx, jnp, mu_conf, mu_star, os, plt, sa_labels, sb):
+    # normalize mean
+    _fig, _ax = plt.subplots()
+    _max_mu_star = jnp.max(mu_star[-1, :])
+    _ax.bar(
+        sa_labels, 
+        [mu_star[-1,i] / _max_mu_star for i in idx],
+        yerr=[mu_conf[-1,j] / _max_mu_star for j in idx],
+        color='lightgrey'
+    )
+
+    plt.ylabel("Relative Ranking")
+    for _label in _ax.get_xticklabels():
+        _label.set_rotation(75)
+
+    _fig.set_figheight(5.2)
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "norm_morris_mean_tf.svg"))
+    plt.gca()
+    return
+
+
+@app.cell
+def _(data_dir, mu_conf, mu_star, os, plt, sa_labels, sb, time):
+    # morris mean
+    top_params = [0, 2, 4, 5, 6]
+    _fig, _ax = plt.subplots()
+
+    for _i in top_params:
+        _ax.plot(
+            time,
+            mu_star[:,_i],
+            label=sa_labels[_i]
+        )
+
+        _ax.fill_between(
+            time,
+            mu_star[:,_i] - mu_conf[:,_i],
+            mu_star[:,_i] + mu_conf[:,_i],
+            alpha=0.25
+        )
+
+    
+    plt.ylabel("Mean Morris Sensitivty, $µ^*$")
+    plt.xlabel("Time (hr)")
+    plt.legend(frameon=False)
+    
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "morris_mean.svg"))
+    plt.gca()
+
+    return (top_params,)
+
+
+@app.cell
 def _(data_dir, idx, os, plt, sa_labels, sb, sigma):
     _fig, _ax = plt.subplots()
     _ax.bar(
@@ -734,6 +790,51 @@ def _(data_dir, idx, os, plt, sa_labels, sb, sigma):
 def _(sigma):
     print(f"RMA prod sigma: {sigma[-1,0]}")
     print(f"tTA deg sigma: {sigma[-1,5]}")
+    return
+
+
+@app.cell
+def _(data_dir, idx, jnp, os, plt, sa_labels, sb, sigma):
+    # normalize std
+    _fig, _ax = plt.subplots()
+    _max_sigma = jnp.max(sigma[-1, :])
+    _ax.bar(
+        sa_labels, 
+        [sigma[-1,i] / _max_sigma for i in idx],
+        color='lightgrey'
+    )
+
+    plt.ylabel("Relative Nonlinearity or Interaction")
+    for _label in _ax.get_xticklabels():
+        _label.set_rotation(75)
+
+    _fig.set_figheight(5.2)
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "norm_morris_std_tf.svg"))
+    plt.gca()
+    return
+
+
+@app.cell
+def _(data_dir, os, plt, sa_labels, sb, sigma, time, top_params):
+    _fig, _ax = plt.subplots()
+    for _i in top_params:
+        _ax.plot(
+            time,
+            sigma[:,_i],
+            label=sa_labels[_i]
+        )
+    
+    plt.ylabel("Std. Morris Sensitivty, $\sigma$")
+    plt.xlabel("Time (hr)")
+    plt.legend(frameon=False)
+    
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "morris_std.svg"))
+    plt.gca()
     return
 
 

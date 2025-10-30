@@ -11,12 +11,39 @@ Currently, there are three main models:
 
 ## Installation
 
-```bash
-uv add rma_kinetics
+### uv
 
-# or with standard pip
-# pip install rma_kinetics
+```bash
+uv add rma-kinetics
+# or uv pip install rma-kinetics
 ```
+
+### pip
+
+```bash
+pip install rma-kinetics
+```
+
+### Source
+
+Clone the repository
+
+```bash
+git clone https://github.com/szablowskilab/rma-kinetics.git
+cd rma-kinetics
+```
+
+Create a new virtual environment. Below is an example using UV to sync
+dependencies (Linux/Macos).
+
+```bash
+uv sync
+source .venv/bin/activate
+```
+
+Install the rma-kinetics package (`uv pip install -e .`).
+
+
 
 ## Quick Start
 
@@ -43,21 +70,15 @@ plt.gcf()
 
 All RMA models can be run by calling the `simulate` method detailed below.
 
-**Method:** `simulate`
+::: rma_kinetics.models.AbstractModel.simulate
+    options:
+      show_source: false
+      heading: "simulate"
 
-:::rma_kinetics.models.AbstractModel.simulate
+Simulations return a [`Solution`](./api/solution.md) object which can be used to inspect the results.
 
 Please see the [API reference](./api/models/constitutive.md) or [examples](https://github.com/szablowskilab/rma-kinetics/tree/main/examples) for more details.
 
 ## Citation
 
-If you found this library useful, please cite: [(bioarxiv link)]()
-
-```bibtex
-@article{buitrago2025rma
-  title={Modeling synthetic serum markers for monitoring deep tissue gene expression},
-  author={Nicolas Buitrago, Josefina Brau, Jerzy Szablowski},
-  year={2025},
-}
-```
-Also consider starring the project on [GitHub](https://github.com/szablowskilab/rma-kinetics).
+Will be updated shortly.

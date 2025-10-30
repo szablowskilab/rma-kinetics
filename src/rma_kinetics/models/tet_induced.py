@@ -6,20 +6,20 @@ from diffrax import ODETerm, AbstractTerm
 
 
 class TetRMA(AbstractModel):
-    """
-    Tet-Off gated RMA expression model.
+    r"""
+    Tetracycline transcriptional activator (tTA) induced RMA expression model.
 
     Attributes:
-        rma_prod_rate (float): RMA production rate (concentration/time).
-        rma_rt_rate (float): RMA reverse transcytosis rate (1/time).
-        rma_deg_rate (float): RMA degradation rate (1/time).
+        rma_prod_rate (float): RMA production rate, $k_{RMA}$.
+        rma_rt_rate (float): RMA reverse transcytosis rate, $k_{RT}$.
+        rma_deg_rate (float): RMA degradation rate, $\gamma_{RMA}$.
         dox_model_config (DoxPKConfig): Dox PK model configuration.
-        dox_kd (float): Dox dissocation constant.
-        tta_prod_rate (float): tTA production rate.
-        tta_deg_rate (float): tTA degradation rate.
-        tta_kd (float): tTA-TetO operator dissocation constant.
-        leaky_rma_prod_rate (float): Leaky RMA production rate (Default = 0.0).
-        tta_coop (int): tTA cooperativity (Default = 2).
+        dox_kd (float): Dox dissocation constant, $K_{D_{Dox}}$.
+        tta_prod_rate (float): tTA production rate, $k_{tTA}$.
+        tta_deg_rate (float): tTA degradation rate, $\gamma_{tTA}$.
+        tta_kd (float): tTA-TetO operator dissocation constant, $K_{D_{tTA}}$.
+        leaky_rma_prod_rate (float): Leaky RMA production rate, $k_{0_{RMA}}$ (Default = 0.0).
+        tta_coop (int): tTA cooperativity, $n_{tTA}$ (Default = 2).
         time_units (Time): Time units (Default = Time.hours).
         conc_units (Concentration): Concentration units (Default = Concentration.nanomolar).
     """
@@ -60,7 +60,7 @@ class TetRMA(AbstractModel):
 
     def _tet_rma_model(self, t: float, y: PyTree[float]) -> PyTree[float]:
         """
-        Tet induced RMA expression.
+        Tet induced RMA expression compartments.
 
         Arguments:
             t (float): Time points.
@@ -68,7 +68,7 @@ class TetRMA(AbstractModel):
                 plasma/brain dox.
 
         Returns:
-            dydt (PyTree[float]): Concentrations of plasma/brain RMA along with all other species.
+            dydt (PyTree[float]): Brain/plasma RMA and dox concentrations.
         """
         # brain and plasma dox are given as amounts here.
         brain_rma, plasma_rma, ta, brain_dox, plasma_dox = y
@@ -85,6 +85,47 @@ class TetRMA(AbstractModel):
         return dbrain_rma, dplasma_rma, dbrain_dox, dplasma_dox
 
     def _model(self, t: float, y: PyTree[float], args=None) -> PyTree[float]:
+        r"""
+        Full ODE model implementation.
+
+        Info: Model Equations
+            Note that this model assumes constitutive expression of tTA.
+
+            $$\begin{align}
+            \dot{[TA]} &= k_{TA} - \gamma_{TA}[TA] \tag{1} \\
+            [TA]_{SS} &= \frac{k_{TA}}{\gamma_{TA}} \tag{2}
+            \end{align}
+            $$
+
+            Doxycycline is the preferred inhibitor (although tetracycline or other
+            derivatives may be used by updating the [DoxPKConfig](https://szablowskilab/rma-kinetics/docs/api/dox/config).
+            The fraction of the transcriptional activator available for inducing RMA
+            expression is then modeled with a Hill function and modified for leaky expression,
+
+
+            $$\begin{align}
+            \theta_{tTA} &= \frac{1}{1 + \frac{[Dox]}{K_{D_{Dox}}}} \tag{3} \\
+            \dot{[RMA_{B}]} &= \frac{k_{0_{RMA}} + k_{RMA}\left(\frac{\theta_{TA}[TA]}{K_{D_{TA}}}\right)^{n_{tTA}}}{1 + \left(\frac{\theta_{TA}[TA]}{K_{D_{TA}}}\right)^{n_{tTA}}} - k_{RT}[RMA_{B}] \tag{4} \\
+            \dot{[RMA_{P}]} &= k_{RT}[RMA_{B}] - \gamma_{RMA}[RMA_{P}] \tag{5}
+            \end{align}
+            $$
+
+            |Parameters|Description|Units (Example)|
+            |----------|-----------|-----|
+            |$k_{RMA}$|RMA production rate|Concentration/Time (nM/hr)|
+            |$k_{0_{RMA}}$|Leaky RMA production rate|Concentration/Time (nM/hr)|
+            |$k_{RT}$|RMA reverse transcytosis rate|1/Time (1/hr)|
+            |$\gamma_{RMA}$|RMA degradation rate|1/Time (1/hr)|
+            |$k_{tTA}$|tTA production rate|Concentration/Time (nM/hr)|
+            |$\gamma_{tTA}$|tTA degradation rate|1/Time (1/hr)|
+            |$K_{D_{Dox}}$|Dox-tTA binding dissocation constant|Concentration (nM)|
+            |$K_{D_{tTA}}$|tTA-TetO binding dissocation constant|Concentration (nM)|
+            |$n_{tTA}$|tTA cooperativity|Unitless|
+            |$[RMA_B]$|Brain RMA concentration|Concentration (nM)|
+            |$[RMA_P]$|Plasma RMA concentration|Concentration (nM)|
+            |$[tTA]$|Brain tTA concentration|Concentration (nM)|
+            |$[Dox]$|Brain Dox concentration|Concentration (nM)|
+        """
         brain_rma, plasma_rma, ta, brain_dox, plasma_dox = y
         dbrain_rma, dplasma_rma, dbrain_dox, dplasma_dox = self._tet_rma_model(t, (brain_rma, plasma_rma, ta, brain_dox, plasma_dox))
 

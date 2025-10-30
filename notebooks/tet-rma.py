@@ -24,7 +24,6 @@ def _():
     return (
         DoxPKConfig,
         PIDController,
-        SaveAt,
         TetRMA,
         data_dir,
         global_sensitivity,
@@ -73,7 +72,7 @@ def _(TetRMA, dox_pk):
 
 
 @app.cell
-def _(PIDController, SaveAt, jnp, model):
+def _(PIDController, model):
     sim_t0 = 0
     sim_t1 = 144
     fs = 2
@@ -83,7 +82,7 @@ def _(PIDController, SaveAt, jnp, model):
         t1=144,
         dt0=0.1,
         y0=(0, 0, 1, 0, 0),
-        saveat=SaveAt(ts=jnp.linspace(sim_t0, sim_t1, sim_t1*fs)),
+        sampling_rate=fs,
         stepsize_controller=PIDController(atol=1e-5, rtol=1e-5),
     )
     return (sol,)
@@ -125,7 +124,6 @@ def _(plt, sol):
 def _(
     DoxPKConfig,
     PIDController,
-    SaveAt,
     TetRMA,
     data_dir,
     dox_hyclate_percent,
@@ -174,7 +172,7 @@ def _(
             t1=504,
             dt0=0.1,
             y0=(0, 0, model.tta_prod_rate/model.tta_deg_rate, brain_dox_ss, plasma_dox_ss),
-            saveat=SaveAt(ts=jnp.linspace(0, 504, 504*2)),
+            sampling_rate=2,
             stepsize_controller=PIDController(atol=1e-6, rtol=1e-6)
         )
 
@@ -193,6 +191,7 @@ def _(
 
     _ax[0].axvline(x=168, color='lightgrey', linestyle=':')
     _ax[0].set_ylabel("Plasma RMA (nM)")
+    _ax[0].set_xlabel("Time (hr)")
     _ax[0].legend(frameon=False, title="Dox mg/kg")
 
     _ax[1].set_ylabel("Dox (µM)")
@@ -211,7 +210,7 @@ def _(
 
 
 @app.cell
-def _(DoxPKConfig, PIDController, SaveAt, TetRMA, jnp, mouse_weight):
+def _(DoxPKConfig, PIDController, TetRMA, jnp, mouse_weight):
     # sensitivity analysis
     def global_map(params):
         dox_pk = DoxPKConfig(
@@ -244,10 +243,10 @@ def _(DoxPKConfig, PIDController, SaveAt, TetRMA, jnp, mouse_weight):
 
         solution = model.simulate(
             t0=0,
-            t1=504,
+            t1=672,
             dt0=0.1,
             y0=(0, 0, model.tta_prod_rate/model.tta_deg_rate, brain_dox_ss, plasma_dox_ss),
-            saveat=SaveAt(ts=jnp.linspace(0, 504, 504*2)),
+            sampling_rate=2,
             stepsize_controller=PIDController(atol=1e-6, rtol=1e-6)
         )
 
@@ -325,12 +324,13 @@ def _(data_dir, jnp, mu_conf, mu_star, os, plt, sb):
         "$K_{D_{tTA}}$",
         "$k_{0_{RMA}}$"
     ]
-    time = jnp.linspace(0, 504, 1008)
+    top_params = [2, 10, 11, 12, 13]
+    time = jnp.linspace(0, 672, 1344)
 
-    for _i, _label in enumerate(labels):
+    for _i in top_params:
         _mu_star = mu_star[:,_i]
         _mu_conf = mu_conf[:,_i]
-        plt.plot(time, _mu_star, label=_label)
+        plt.plot(time, _mu_star, label=labels[_i])
         plt.fill_between(
             time,
             _mu_star - _mu_conf,
@@ -346,12 +346,28 @@ def _(data_dir, jnp, mu_conf, mu_star, os, plt, sb):
     plt.savefig(os.path.join(data_dir, "morris_mean.svg"))
     plt.gca()
 
-    return (labels,)
+    return labels, time, top_params
+
+
+@app.cell
+def _(data_dir, labels, os, plt, sb, sigma, time, top_params):
+    for _i in top_params:
+        plt.plot(time, sigma[:, _i], label=labels[_i])
+
+    plt.xlabel("Time (hr)")
+    plt.ylabel("Std. Morris Sensitivity, $\sigma$")
+    plt.legend(frameon=False, bbox_to_anchor=(1,1))
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "morris_std.svg"))
+    plt.gca()
+
+    return
 
 
 @app.cell
 def _(data_dir, jnp, labels, mu_conf, mu_star, os, plt, sb):
-    # sensitivity at Tf
+    # sensitivity at day 1 post dox
     idx = jnp.linspace(0, 15, 15, dtype=int)
     _fig, _ax = plt.subplots()
     _ax.bar(
@@ -382,6 +398,32 @@ def _(mu_conf, mu_star):
 
 
 @app.cell
+def _(data_dir, idx, jnp, labels, mu_conf, mu_star, os, plt, sb):
+    # normalize mean
+    #idx = jnp.linspace(0, 15, 15, dtype=int)
+    max_mu_star = jnp.max(mu_star[192, :])
+    _fig, _ax = plt.subplots()
+    _ax.bar(
+        labels, 
+        [mu_star[192,i] / max_mu_star for i in idx],
+        yerr=[mu_conf[192,j] / max_mu_star for j in idx],
+        color='lightgrey',
+    )
+
+    plt.title("Day 1 post dox withdrawal")
+    plt.ylabel("Relative Ranking")
+    for _label in _ax.get_xticklabels():
+        _label.set_rotation(75)
+
+    sb.despine()
+    plt.ylim(0, 1.1)
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "norm_morris_mean_day_1_post_dox.svg"))
+    plt.gca()
+    return
+
+
+@app.cell
 def _(data_dir, idx, labels, mu_conf, mu_star, os, plt, sb):
     _fig, _ax = plt.subplots()
     _ax.bar(
@@ -391,14 +433,14 @@ def _(data_dir, idx, labels, mu_conf, mu_star, os, plt, sb):
         color='lightgrey'
     )
 
-    plt.title("Day 35 post dox withdrawal")
+    plt.title("Day 21 post dox withdrawal")
     plt.ylabel("Mean Morris Sensitivty, $µ^*$")
     for _label in _ax.get_xticklabels():
         _label.set_rotation(75)
 
     sb.despine()
     plt.tight_layout()
-    plt.savefig(os.path.join(data_dir, "morris_mean_day_35_post_dox.svg"))
+    plt.savefig(os.path.join(data_dir, "morris_mean_day_21_post_dox.svg"))
     plt.gca()
     return
 
@@ -411,6 +453,30 @@ def _(mu_conf, mu_star):
     print(f"Dox Kd mu_star: {mu_star[-1, 10]} +- {mu_conf[-1, 10]}")
     print(f"tTA prod mu_star: {mu_star[-1, 11]} +- {mu_conf[-1, 11]}")
     print(f"tTA deg mu_star: {mu_star[-1, 12]} +- {mu_conf[-1, 12]}")
+    return
+
+
+@app.cell
+def _(data_dir, idx, jnp, labels, mu_conf, mu_star, os, plt, sb):
+    # normalized day 28 (3 week time point after dox removal)
+    _fig, _ax = plt.subplots()
+    _max_mu_star = jnp.max(mu_star[-1, :])
+    _ax.bar(
+        labels, 
+        [mu_star[-1,i] / _max_mu_star for i in idx],
+        yerr=[mu_conf[-1,j] / _max_mu_star for j in idx],
+        color='lightgrey',
+    )
+
+    plt.title("Day 21 post dox withdrawal")
+    plt.ylabel("Relative Ranking")
+    for _label in _ax.get_xticklabels():
+        _label.set_rotation(75)
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "norm_morris_mean_day_21_post_dox.svg"))
+    plt.gca()
     return
 
 
@@ -445,6 +511,30 @@ def _(sigma):
 
 
 @app.cell
+def _(data_dir, idx, jnp, labels, os, plt, sb, sigma):
+    # normalized std on day 1
+    _fig, _ax = plt.subplots()
+    _max_sigma = jnp.max(sigma[192, :])
+    _ax.bar(
+        labels, 
+        [sigma[192,i] / _max_sigma for i in idx],
+        color='lightgrey'
+    )
+
+    plt.title("Day 1 post dox withdrawal")
+    plt.ylabel("Relative Nonlinearity or Interaction")
+    for _label in _ax.get_xticklabels():
+        _label.set_rotation(75)
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "norm_morris_std_day_1_post_dox.svg"))
+    plt.gca()
+
+    return
+
+
+@app.cell
 def _(data_dir, idx, labels, os, plt, sb, sigma):
     _fig, _ax = plt.subplots()
     _ax.bar(
@@ -453,14 +543,14 @@ def _(data_dir, idx, labels, os, plt, sb, sigma):
         color='lightgrey'
     )
 
-    plt.title("Day 35 post dox withdrawal")
+    plt.title("Day 21 post dox withdrawal")
     plt.ylabel("Std. Morris Sensitivty, $\\sigma$")
     for _label in _ax.get_xticklabels():
         _label.set_rotation(75)
 
     sb.despine()
     plt.tight_layout()
-    plt.savefig(os.path.join(data_dir, "morris_std_day_35_post_dox.svg"))
+    plt.savefig(os.path.join(data_dir, "morris_std_day_21_post_dox.svg"))
     plt.gca()
     return
 
@@ -473,6 +563,29 @@ def _(sigma):
     print(f"Dox Kd sigma: {sigma[-1, 10]}")
     print(f"tTA prod sigma: {sigma[-1, 11]}")
     print(f"tTA deg sigma: {sigma[-1, 12]}")
+    return
+
+
+@app.cell
+def _(data_dir, idx, jnp, labels, os, plt, sb, sigma):
+    # normalized std on day 21
+    _fig, _ax = plt.subplots()
+    _max_sigma = jnp.max(sigma[-1, :])
+    _ax.bar(
+        labels, 
+        [sigma[-1,i] / _max_sigma for i in idx],
+        color='lightgrey'
+    )
+
+    plt.title("Day 21 post dox withdrawal")
+    plt.ylabel("Relative Nonlinearity or Interaction")
+    for _label in _ax.get_xticklabels():
+        _label.set_rotation(75)
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "norm_morris_std_day_21_post_dox.svg"))
+    plt.gca()
     return
 
 

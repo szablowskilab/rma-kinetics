@@ -2,15 +2,30 @@ site_name: RMA Kinetics Documentation
 theme:
   name: "material"
   palette:
-    primary: blue
+    primary: white
     accent: blue
   theme:
     features:
       - content.code.copy
 extra:
-  homepage: https://szablowskilab.org
+  homepage: /
 plugins:
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            force_inspection: true
+            heading_level: 3
+            inherited_members: true
+            members_order: source
+            show_bases: false
+            show_if_no_docstring: true
+            show_overloads: false
+            show_root_heading: true
+            show_signature_annotations: true
+            show_source: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
   - search
 markdown_extensions:
   - admonition
@@ -43,4 +58,5 @@ nav:
           - CNO:
               - "api/models/cno/model.md"
               - "api/models/cno/config.md"
+      - "api/solution.md"
       - "api/units.md"

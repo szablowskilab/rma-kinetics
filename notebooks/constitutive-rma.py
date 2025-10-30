@@ -9,7 +9,7 @@ def _():
     from rma_kinetics.models import ConstitutiveRMA
     from gluc import get_gluc_conc
     from sensitivity import global_sensitivity
-    from diffrax import PIDController, SaveAt, Kvaerno5
+    from diffrax import PIDController, SaveAt, Kvaerno5, diffeqsolve
     from diffopt.multiswarm import ParticleSwarm, get_best_loss_and_params
     from functools import partial
     from jax import (
@@ -32,6 +32,7 @@ def _():
         PIDController,
         ParticleSwarm,
         SaveAt,
+        diffeqsolve,
         get_best_loss_and_params,
         get_gluc_conc,
         global_sensitivity,
@@ -44,6 +45,18 @@ def _():
         r2_score,
         sb,
     )
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## RMA datasets
+
+    Measurements were made at 0, 2, and 3 weeks after delivery of AAV-hSyn-RMA-IRES-GFP. Each dataset corresponds to the targeted brain region (CA1 hippocampus, caudate putamen, or substantia nigra).
+    """
+    )
+    return
 
 
 @app.cell
@@ -73,6 +86,12 @@ def _(dataset, gluc_df, plt, sb):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""## Fitting course-grain ODE model to *in vivo* RMA measurements""")
+    return
+
+
 @app.cell
 def _(
     ConstitutiveRMA,
@@ -80,6 +99,7 @@ def _(
     PIDController,
     ParticleSwarm,
     SaveAt,
+    diffeqsolve,
     get_best_loss_and_params,
     gluc_df,
     jnp,
@@ -89,7 +109,7 @@ def _(
     def loss(params, args):
         observed, sim_config = args
         model = ConstitutiveRMA(*params)
-        predicted = model.simulate(**sim_config)
+        predicted = diffeqsolve(model._terms(), **sim_config)
         return jnp.sum((observed - predicted.ys[1])**2)
 
     sim_config = {
@@ -103,9 +123,9 @@ def _(
     }
 
     bounds = [
-        (0, 1), # prod
+        (1e-5, 1), # prod
         (0.54, 1), # rt
-        (4e-3, 1e-2) # deg
+        (0.0048630532, 0.0104337257) # deg
     ]
 
 
@@ -137,11 +157,21 @@ def _(best_loss, best_params, data_dir, jnp, os):
 
 
 @app.cell
+def _(gluc_df, pl):
+    gluc_var = gluc_df.group_by("time").agg([
+        pl.col("gluc").var().alias("gluc_var")
+    ])
+    gluc_var
+    return
+
+
+@app.cell
 def _(
     ConstitutiveRMA,
     SaveAt,
     best_params,
     data_dir,
+    diffeqsolve,
     gluc_df,
     jnp,
     observed,
@@ -155,7 +185,7 @@ def _(
 
     sim_config["saveat"] = SaveAt(ts=jnp.linspace(0, 504, 504))
     model = ConstitutiveRMA(*best_params)
-    solution = model.simulate(**sim_config)
+    solution = diffeqsolve(model._terms(), **sim_config)
 
     plt.plot(solution.ts, solution.ys[1], 'k')
     plt.errorbar(gluc_df["time"], gluc_df["gluc"], color="k", fmt="o")
@@ -176,14 +206,41 @@ def _(
 
 
 @app.cell
-def _(ConstitutiveRMA, best_params, global_sensitivity, jnp, sim_config):
+def _(jnp):
+    jnp.std(jnp.array([0.99, 0.98, 0.98]))
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Initial sensitivity analysis
+
+    Morris sensitivity is used initially to determine relative importance of each parameter.
+    """
+    )
+    return
+
+
+@app.cell
+def _(
+    ConstitutiveRMA,
+    best_params,
+    diffeqsolve,
+    global_sensitivity,
+    jnp,
+    sim_config,
+):
     # sensitivity analysis
     def map_model(params):
         model = ConstitutiveRMA(*params)
-        solution = model.simulate(**sim_config)
+        solution = diffeqsolve(model._terms(), **sim_config)
         return solution.ys[1]
 
     range = jnp.array([-0.5, 0.5])
+    #best_params[2] = 0.6 # test fast deg
+    #best_params[0] = best_params[0] / 10 # test slow prod
     param_space = {
         "num_vars": 3,
         "names": ["rma_prod_rate", "rma_rt_rate", "rma_deg_rate"],
@@ -244,6 +301,12 @@ def _(data_dir, linestyles, os, param_labels, plt, sb, sigma, time):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""Sensitivity at final time point""")
+    return
+
+
 @app.cell
 def _(data_dir, mu_conf, mu_star, os, param_labels, plt, sb):
     # sensitivity at Tf
@@ -269,10 +332,47 @@ def _(data_dir, mu_conf, mu_star, os, param_labels, plt, sb):
 
 
 @app.cell
+def _(data_dir, jnp, mu_conf, mu_star, os, param_labels, plt, sb):
+    # normalize sensitivies
+    norm_mu_star = mu_star[-1] / jnp.max(mu_star[-1])
+    norm_mu_conf = mu_conf[-1] / jnp.max(mu_star[-1])
+
+    # normalized sensitivity at Tf
+    plt.bar(param_labels, [
+        norm_mu_star[0],
+        norm_mu_star[1],
+        norm_mu_star[2],
+    ],
+    yerr=[
+        norm_mu_conf[0],
+        norm_mu_conf[1],
+        norm_mu_conf[2],
+    ], color='lightgrey', width=0.5)
+
+
+    plt.ylabel("Relative Ranking")
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "norm_morris_mean_tf.svg"))
+    plt.gca()
+
+    return norm_mu_conf, norm_mu_star
+
+
+@app.cell
 def _(mu_conf, mu_star):
     print(f"kRMA mu*: {mu_star[-1,0]} +- {mu_conf[-1, 0]}")
     print(f"kRT mu*: {mu_star[-1,1]} +- {mu_conf[-1, 1]}")
     print(f"gammaRMA mu*: {mu_star[-1,2]} +- {mu_conf[-1, 2]}")
+    return
+
+
+@app.cell
+def _(norm_mu_conf, norm_mu_star):
+    print(f"norm kRMA mu*: {norm_mu_star[0]} +- {norm_mu_conf[0]}")
+    print(f"norm kRT mu*: {norm_mu_star[1]} +- {norm_mu_conf[1]}")
+    print(f"norm gammaRMA mu*: {norm_mu_star[2]} +- {norm_mu_conf[2]}")
     return
 
 
@@ -289,7 +389,7 @@ def _(data_dir, os, param_labels, plt, sb, sigma):
 
     sb.despine()
     plt.tight_layout()
-    plt.savefig(os.path.join(data_dir, "morris_std_tf.svg"))
+    plt.savefig(os.path.join(data_dir, "morris_std_tf"))
     plt.gca()
     return
 
@@ -299,6 +399,40 @@ def _(sigma):
     print(f"kRMA std: {sigma[-1,0]}")
     print(f"kRT std: {sigma[-1,1]}")
     print(f"gammaRMA std: {sigma[-1,2]}")
+    return
+
+
+@app.cell
+def _(data_dir, jnp, os, param_labels, plt, sb, sigma):
+    # normalize morris std
+    norm_sigma = sigma[-1] / jnp.max(sigma[-1])
+    plt.bar(param_labels, [
+        norm_sigma[0],
+        norm_sigma[1],
+        norm_sigma[2],
+    ],color='lightgrey', width=0.5)
+
+
+    plt.ylabel("Relative Nonlinearity or Interaction")
+
+    sb.despine()
+    plt.tight_layout()
+    plt.savefig(os.path.join(data_dir, "norm_morris_std_tf.svg"))
+    plt.gca()
+    return (norm_sigma,)
+
+
+@app.cell
+def _(norm_sigma):
+    print(f"norm kRMA std: {norm_sigma[0]}")
+    print(f"norm kRT std: {norm_sigma[1]}")
+    print(f"norm gammaRMA std: {norm_sigma[2]}")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""All fits for each brain region shown on a single plot along with measurements""")
     return
 
 
@@ -346,11 +480,6 @@ def _(base_dir, dataset, get_gluc_conc, jnp, os, pl, plt, sb, solution):
     plt.tight_layout()
     plt.savefig(os.path.join(base_dir, "fit.svg"))
     plt.gca()
-    return
-
-
-@app.cell
-def _():
     return
 
 

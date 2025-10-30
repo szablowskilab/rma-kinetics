@@ -14,4 +14,8 @@ $$
 
 See [DoxPKConfig](./config.md) for parameter details.
 
-:::rma_kinetics.models.DoxPK
+::: rma_kinetics.models.DoxPK
+    options:
+      members:
+        - _intake
+        - _model

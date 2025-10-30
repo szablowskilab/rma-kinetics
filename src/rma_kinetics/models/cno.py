@@ -27,19 +27,19 @@ class CnoPKConfig(EqxModule):
     """
 
     cno_dose: float
-    cno_absorption_rate: float
-    cno_elimination_rate: float
-    cno_reverse_metabolism_rate: float
-    clz_metabolism_rate: float
-    cno_brain_transport_rate: float
-    cno_plasma_transport_rate: float
-    clz_brain_transport_rate: float
-    clz_plasma_transport_rate: float
-    clz_elimination_rate: float
-    cno_plasma_vd: float
-    cno_brain_vd: float
-    clz_plasma_vd: float
-    clz_brain_vd: float
+    cno_absorption_rate: float = 23.94
+    cno_elimination_rate: float = 5.51e-2
+    cno_reverse_metabolism_rate: float = 1.44
+    clz_metabolism_rate: float = 3e-1
+    cno_brain_transport_rate: float = 2.33
+    cno_plasma_transport_rate: float = 71.85
+    clz_brain_transport_rate: float = 35.62
+    clz_plasma_transport_rate: float = 34.07
+    clz_elimination_rate: float = 3.94
+    cno_plasma_vd: float = 3.99e-2
+    cno_brain_vd: float = 0.21
+    clz_plasma_vd: float = 0.24
+    clz_brain_vd: float = 8.87e-2
     cno_nmol: float = field(init=False)
 
     def __post_init__(self):
@@ -68,7 +68,7 @@ class CnoPK(EqxModule):
 
         Arguments:
             t (float): Time point.
-            y (PyTree[float]): CNO and CLZ amounts.
+            y (PyTree[float]): peritoneal CNO, plasma CNO/CLZ, brain CNO/CLZ amounts.
 
         Returns:
             dydt (PyTree[float]): Tuple containing change in CNO and CLZ amounts.

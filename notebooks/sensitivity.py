@@ -41,7 +41,7 @@ def global_sensitivity(
     if len(y.shape) > 2:
         y = y.squeeze(-1)
 
-    sensitivity = [morris_analyzer.analyze(problem_space, param_vectors, Y) for Y in y.T]
+    sensitivity = [morris_analyzer.analyze(problem_space, param_vectors, Y, scaled=True) for Y in y.T]
 
     return y, sensitivity
 

@@ -1,6 +1,4 @@
 from rma_kinetics.models import ConstitutiveRMA
-from diffrax import PIDController, SaveAt
-from jax import numpy as jnp
 
 import matplotlib.pyplot as plt
 
@@ -12,9 +10,8 @@ if __name__ == "__main__":
     results = model.simulate(
         t0=t0,
         t1=t1,
+        y0=(0,0),
         dt0=1,
-        stepsize_controller=PIDController(atol=1e-5, rtol=1e-5),
-        saveat=SaveAt(ts=jnp.linspace(t0, t1, t1))
     )
 
     results.plot_plasma_rma()

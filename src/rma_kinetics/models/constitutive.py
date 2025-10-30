@@ -33,8 +33,23 @@ class ConstitutiveRMA(AbstractModel):
         )
 
     def _model(self, t: float, y: PyTree[float], args=None) -> PyTree[float]:
-        """
-        ODE model implementation.
+        r"""
+        ODE model implementation. See the Model Equations section for more details.
+
+        Info: Model Equations
+            $$\begin{align}
+            \dot{[RMA_{B}]} &= k_{RMA} - k_{RT}[RMA_{B}] \tag{1} \\
+            \dot{[RMA_{P}]} &= k_{RT} - \gamma_{RMA}[RMA_{P}] \tag{2}
+            \end{align}
+            $$
+
+            |Parameters|Description|Units (Example)|
+            |----------|-----------|-----|
+            |$k_{RMA}$|RMA production rate|Concentration/Time (nM/hr)|
+            |$k_{RT}$|RMA reverse transcytosis rate|1/Time (1/hr)|
+            |$\gamma_{RMA}$|RMA degradation rate|1/Time (1/hr)|
+            |$[RMA_B]$|Brain RMA concentration|Concentration (nM)|
+            |$[RMA_P]$|Plasma RMA concentration|Concentration (nM)|
 
         Arguments:
             t (float): Time point.

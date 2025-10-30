@@ -33,6 +33,14 @@ SPECIES_MAP = {
 }
 
 class Solution(EqxModule):
+    """
+    Solution returned from simulation.
+
+    Attributes:
+        _diffsol (diffrax.Solution): Diffrax solution to wrap (returned by `diffeqsolve`).
+        time_units (Time): Time enum used to format axis in plots.
+        conc_units (Concentration): Concentration enum used to format axis in plots.
+    """
     _diffsol: DiffSol
     time_units: Time
     conc_units: Concentration
@@ -42,61 +50,104 @@ class Solution(EqxModule):
 
     @property
     def brain_rma(self):
-        """Get Brain RMA solution."""
+        """Get Brain RMA trajectory as a jax array."""
         return self._get_species("Brain RMA")
 
     @property
     def plasma_rma(self):
-        """Get Plasma RMA solution."""
+        """Get Plasma RMA trajectory as a jax array."""
         return self._get_species("Plasma RMA")
 
     @property
     def tta(self):
-        """Get tTA solution."""
+        """
+        Get tTA trajectory as a jax array.
+
+        Available in solutions from `TetRMA` or `ChemogeneticRMA`.
+        """
         return self._get_species("tTA")
 
     @property
     def dox(self):
-        """Get dox solution."""
+        """
+        Get dox trajectory as a jax array.
+
+        Available in solutions from `TetRMA` or `ChemogeneticRMA`.
+        """
         return self._get_species("Dox")
 
     @property
     def hm3dq(self):
-        """Get hM3Dq solution."""
+        """
+        Get hM3Dq trajectory as a jax array.
+
+        Available in solutions from `ChemogeneticRMA`.
+        """
         return self._get_species("hM3Dq")
 
     @property
     def cno(self):
-        """Get CNO solution."""
+        """
+        Get CNO trajectory as a jax array.
+
+        Available in solutions from `ChemogeneticRMA`.
+        """
         return self._get_species("CNO")
 
     @property
     def clz(self):
-        """Get CLZ solution."""
+        """
+        Get CLZ trajectory as a jax array.
+
+        Available in solutions from `ChemogeneticRMA`.
+        """
         return self._get_species("CLZ")
 
     def plot_plasma_rma(self):
-        """Plot plasma RMA solution."""
+        """Plot plasma RMA simulation."""
         self._plot_species("Plasma RMA")
 
     def plot_brain_rma(self):
-        """Plot brain RMA solution."""
+        """Plot brain RMA simulation."""
         self._plot_species("Brain RMA")
 
     def plot_tta(self):
-        """Plot tTA solution."""
+        """
+        Plot tTA simulation.
+
+        Available in solutions from `TetRMA` or `ChemogeneticRMA`.
+        """
         self._plot_species("tTA")
 
     def plot_dox(self):
-        """Plot dox solution."""
+        """
+        Plot dox simulation.
+
+        Available in solutions from `TetRMA` or `ChemogeneticRMA`.
+        """
         self._plot_species("Dox")
 
+    def plot_hm3dq(self):
+        """
+        Plot hM3Dq simulation.
+
+        Available in solutions from `ChemogeneticRMA`.
+        """
+
     def plot_cno(self):
-        """Plot CNO solution."""
+        """
+        Plot CNO simulation.
+
+        Available in solutions from `ChemogeneticRMA`.
+        """
         self._plot_species("CNO")
 
     def plot_clz(self):
-        """Plot CLZ solution."""
+        """
+        Plot CLZ simulation.
+
+        Available in solutions from `ChemogeneticRMA`.
+        """
         self._plot_species("CLZ")
 
     def _get_species(self, label: str):
@@ -159,7 +210,7 @@ class AbstractModel(EqxModule):
 
         Returns:
             dydt (PyTree[float]): Change in brain and plasma RMA concentrations
-            (along with any other additional species).
+                (along with any other additional species).
         """
         pass
 

@@ -7,6 +7,9 @@ from .abstract import Solution
 from jaxtyping import PyTree
 from jax import numpy as jnp
 from diffrax import (
+    AbstractPath,
+    AbstractProgressMeter,
+    NoProgressMeter,
     diffeqsolve,
     SaveAt,
     AbstractStepSizeController,
@@ -15,7 +18,8 @@ from diffrax import (
     AbstractSolver,
     RecursiveCheckpointAdjoint,
     AbstractAdjoint,
-    Solution as DiffSol
+    Solution as DiffSol,
+    AbstractPath
 )
 
 
@@ -114,6 +118,62 @@ class ChemogeneticRMA(TetRMA):
         self.leaky_tta_prod_rate = leaky_tta_prod_rate
 
     def _model(self, t: float, y: PyTree[float], args=None) -> PyTree[float]:
+        r"""
+        Full ODE model implementation.
+
+        Info: Model Equations
+            Note that this model assumes constitutive expression of hM3Dq.
+
+            $$\begin{align}
+            \dot{[Dq]} &= k_{Dq} - \gamma_{Dq}[Dq] \tag{1} \\
+            [Dq]_{SS} &= \frac{k_{Dq}}{\gamma_{Dq}} \tag{2}
+            \end{align}
+            $$
+
+            The designer receptir can be activated by CNO (or CLZ which is
+            produced from reverse-metabolism of CNO).
+
+            $$\begin{align}
+            \theta_{L} &= \frac{\frac{[CNO]}{EC_{50_{CNO}}} + \frac{[CLZ]}{EC_{50_{CLZ}}}}{1 + \frac{[CNO]}{EC_{50_{CNO}}} + \frac{[CLZ]}{EC_{50_{CLZ}}}} \tag{3}
+            \end{align}
+            $$
+
+            Production of the tetracycline-transcriptional activator (tTA) is then
+            dependent on the level of active hM3Dq and modified for leaky expression,
+
+            $$\begin{align}
+            \alpha_{Dq} &= \left(\frac{\theta_{L}[Dq]}{EC_{50_{Dq}}}\right)^{n_{Dq}} \tag{4} \\
+            \dot{[tTA]} &= \frac{k_{0_{tTA}} + k_{tTA}\alpha_{Dq}}{1 + \alpha_{Dq}} - \gamma_{TA}[TA] \tag{5}
+            \end{align}
+            $$
+
+            The remaining equations for doxycycline and RMA dynamics are the same
+            as the TetRMA model.
+
+            |Parameters|Description|Units (Example)|
+            |----------|-----------|-----|
+            |$k_{Dq}$|hM3Dq production rate|Concentration/Time (nM/hr)|
+            |$\gamma_{Dq}$|hM3Dq degradation rate|1/Time (1/hr)|
+            |$EC_{50_{CNO}}$|CNO EC50|Concentration (nM)|
+            |$EC_{50_{CLZ}}$|CLZ EC50|Concentration (nM)|
+            |$EC_{50_{Dq}}$|hM3Dq EC50|Concentration (nM)|
+            |$n_{Dq}$|hM3Dq cooperativity|Unitless|
+            |$k_{tTA}$|tTA production rate|Concentration/Time (nM/hr)|
+            |$\gamma_{tTA}$|tTA degradation rate|1/Time (1/hr)|
+            |$[CNO]$|Brain CNO concentration|Concentration (nM)|
+            |$[CLZ]$|Brain CLZ concentration|Concentration (nM)|
+            |$[Dq]$|Brain hM3Dq concentration|Concentration (nM)|
+            |$[tTA]$|Brain tTA concentration|Concentration (nM)|
+
+
+
+        Args:
+            t (float): Time point.
+            y (PyTree[float]): Concentration of brain/plasma RMA (along with all other species).
+
+        Returns:
+            dydt (PyTree[float]): Change in brain/plasma RMA (along with all other species).
+        """
 
         brain_rma, plasma_rma, ta, brain_dox, plasma_dox, dreadd, peritoneal_cno, brain_cno, plasma_cno, brain_clz, plasma_clz = y
 
@@ -151,77 +211,120 @@ class ChemogeneticRMA(TetRMA):
             self,
             t0: float,
             t1: float,
+            y0: PyTree[float],
             dt0: float | None=None,
             sampling_rate: float=1,
-            y0: PyTree[float]=(0,0),
             stepsize_controller: AbstractStepSizeController = PIDController(rtol=1e-5, atol=1e-5),
             max_steps: int = 4096,
             solver: AbstractSolver = Kvaerno3(),
             adjoint: AbstractAdjoint = RecursiveCheckpointAdjoint(),
             throw: bool = True,
+            progress_meter: AbstractProgressMeter = NoProgressMeter()
     ):
         """
+        Simulate chemogenetic activated RMA.
+
+        This method differs from other models by splitting the integration
+        in up to two parts if needed depending on the time of CNO administration.
+
+        Args:
+            t0 (float): Start time of integration.
+            t1 (float): Stop time of integration.
+            y0 (PyTree[float]): Tuple of initial conditions.
+            dt0 (float | None`): Initial step size if using adaptive
+                step sizes, or size of all steps if using constant stepsize.
+            sampling_rate (float): Sampling rate for saving solution.
+            stepsize_controller (AbstractStepSizeController`): Determines
+                how to change step size during integration.
+            max_steps (int): Max number of steps before stopping.
+            solver (AbstractSolver): Differential equation solver.
+            adjoint (AbstractAdjoint): How to differentiate.
+            throw (bool): Raise an exception if integration fails.
+            progress_meter (AbstractProgressMeter): Progress meter.
+
+        Returns:
+            solution (Solution): A solution object (parent of diffrax.Solution) with added plotting methods.
         """
-        # just assume that save at has ts
         if self.cno_t0 == 0:
-            saveat = SaveAt(ts=jnp.linspace(t0, t1, int(t1*sampling_rate)))
-            solution = diffeqsolve(
-                self._terms(),
-                solver,
-                t0,
-                t1,
-                dt0,
-                y0,
-                saveat=saveat,
-                stepsize_controller=stepsize_controller,
-                max_steps=max_steps,
-                adjoint=adjoint,
-                throw=throw
-            )
+            # adminster CNO at time 0 and run until t1
+            y0_0 = list(y0)
+            y0_0[6] += self.cno.cno_nmol
+            y0_0 = tuple(y0_0)
+            t1_0 = t1
+        else:
+            y0_0 = y0
+            t1_0 = self.cno_t0
 
-            return solution
-
-        pre_cno_saveat = SaveAt(ts=jnp.linspace(t0, self.cno_t0, int(self.cno_t0*sampling_rate)))
-        pre_cno = diffeqsolve(
+        # simulate first segment pre CNO
+        saveat_0 = SaveAt(ts=jnp.linspace(t0, t1_0, int((t1_0 - t0)*sampling_rate)))
+        solution_0 = diffeqsolve(
             self._terms(),
             solver,
             t0,
-            self.cno_t0,
+            t1_0,
             dt0,
-            y0,
-            saveat=pre_cno_saveat,
+            y0_0,
+            saveat=saveat_0,
             stepsize_controller=stepsize_controller,
             max_steps=max_steps,
             adjoint=adjoint,
-            throw=throw
+            throw=throw,
+            progress_meter=progress_meter
         )
 
-        if pre_cno.ys is None or pre_cno.ts is None:
+        if solution_0.ys is None or solution_0.ts is None:
             raise ValueError("Solution or saved time arrays are empty, but the solver didn't throw an error!")
 
-        y1 = [y[-1] for y in pre_cno.ys]
-        y1[6] += self.cno.cno_nmol
+        # if CNO is adminstered at time 0, we return early with the solution.
+        elif self.cno_t0 == 0:
+            # convert plasma/brain CNO/CLZ to concentrations
+            _ys = list(solution_0.ys)
+            _ys[7] /= self.cno.cno_brain_vd
+            _ys[8] /= self.cno.cno_plasma_vd
+            _ys[9] /= self.cno.clz_brain_vd
+            _ys[10] /= self.cno.clz_brain_vd
+            solution_0 = DiffSol(
+                t0=self.cno_t0,
+                t1=t1,
+                ts=solution_0.ts,
+                ys=tuple(_ys),
+                interpolation=solution_0.interpolation,
+                stats=solution_0.stats,
+                result=solution_0.result,
+                solver_state=solution_0.solver_state,
+                controller_state=solution_0.controller_state,
+                made_jump=solution_0.made_jump,
+                event_mask=solution_0.event_mask
+            )
+            return Solution(solution_0, self.time_units, self.conc_units)
 
-        post_cno_saveat = SaveAt(ts=jnp.linspace(self.cno_t0, t1, int(t1*sampling_rate)))
-        post_cno = diffeqsolve(
+        saveat_1 = SaveAt(ts=jnp.linspace(self.cno_t0, t1, int((t1-self.cno_t0)*sampling_rate)))
+
+        # adjust initial condition for peritoneal CNO based on injection amount
+        y0_1 = [y[-1] for y in solution_0.ys]
+        y0_1[6] += self.cno.cno_nmol
+
+        # simulate second segment after administering CNO
+        solution_1 = diffeqsolve(
             self._terms(),
             solver,
             self.cno_t0,
             t1,
             dt0,
-            tuple(y1),
-            saveat=post_cno_saveat,
+            tuple(y0_1),
+            saveat=saveat_1,
             stepsize_controller=stepsize_controller,
             max_steps=max_steps,
             adjoint=adjoint,
-            throw=throw
+            throw=throw,
+            progress_meter=progress_meter
         )
 
-        if pre_cno.ys is None or pre_cno.ts is None:
+        if solution_1.ys is None or solution_1.ts is None:
             raise ValueError("Solution or saved time arrays are empty, but the solver didn't throw an error!")
 
-        ts_full = jnp.concatenate([pre_cno.ts[:-1], post_cno.ts])
-        ys_full = [jnp.concatenate([pre_ys[:-1], post_ys]) for pre_ys, post_ys in zip(pre_cno.ys, post_cno.ys)]
+        ts_full = jnp.concatenate([solution_0.ts[:-1], solution_1.ts])
+        ys_full = [jnp.concatenate([ys_0[:-1], ys_1]) for ys_0, ys_1 in zip(solution_0.ys, solution_1.ys)]
         # convert plasma/brain CNO/CLZ to concentrations
         ys_full[7] /= self.cno.cno_brain_vd
         ys_full[8] /= self.cno.cno_plasma_vd
@@ -233,13 +336,13 @@ class ChemogeneticRMA(TetRMA):
             t1=t1,
             ts=ts_full,
             ys=tuple(ys_full),
-            interpolation=post_cno.interpolation,
-            stats=post_cno.stats,
-            result=post_cno.result,
-            solver_state=post_cno.solver_state,
-            controller_state=post_cno.controller_state,
-            made_jump=post_cno.made_jump,
-            event_mask=post_cno.event_mask
+            interpolation=solution_1.interpolation,
+            stats=solution_1.stats,
+            result=solution_1.result,
+            solver_state=solution_1.solver_state,
+            controller_state=solution_1.controller_state,
+            made_jump=solution_1.made_jump,
+            event_mask=solution_1.event_mask
         )
 
         return Solution(diffsol, self.time_units, self.conc_units)
