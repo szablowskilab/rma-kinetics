@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: false # Don't cancel in-progress runs when a new one is triggered
 
 # Environment variables used by the workflow
-env:
-  UV_SYSTEM_PYTHON: 1 # Use system Python with uv package manager
+# env:
+#  UV_SYSTEM_PYTHON: 1 # Use system Python with uv package manager
 
 jobs:
   # The build job exports marimo notebooks to static HTML/WebAssembly
