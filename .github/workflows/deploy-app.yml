@@ -35,7 +35,9 @@ jobs:
         run: |
           # build the app
           sudo apt install libmpich-dev # needed for diffopt in dev deps
-          uv run marimo export html-wasm app/main.py -o _site --mode run
+          uv venv
+          uv pip install -e .
+          uv run marimo export html-wasm app/main.py -o _site/app --mode run
 
       # build docs
       - name: Build docs
