@@ -5,6 +5,12 @@ on:
     tags:
       # Publish on any tag starting with a `v`, e.g., v0.1.0
       - v*
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Git tag to run relelase against."
+        required: true
+        type: string
 
 jobs:
   run:
