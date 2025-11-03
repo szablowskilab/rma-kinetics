@@ -1,6 +1,6 @@
 import polars as pl
 
-def rlu_to_nm(rlu: float, vmax=168669125, km=227.2) -> float:
+def rlu_to_nm_gluc(rlu: float, vmax=168669125, km=227.2) -> float:
     """
     Convert RLU to Gluc concentration (nM) based on MM standard curve.
 
@@ -21,7 +21,21 @@ def rlu_to_nm(rlu: float, vmax=168669125, km=227.2) -> float:
     """
     return rlu * km / vmax
 
-def get_gluc_conc(df: pl.DataFrame, vmax=168669125, km=227.2):
+def rlu_to_nm_rma(rlu) -> float:
+    """
+    Convert RLU to RMA concentration (nM) based on Lee et al., 2024
+
+    Parameters
+    ----------
+
+    rlu : float
+        RLU value
+    """
+
+    ng_ml = rlu * 0.0012 + 26.96
+    return ng_ml / 44
+
+def get_gluc_conc(df: pl.DataFrame, reporter: str):
     """
     Calculate mean and standard deviation of Gluc concentrations
     from RLU values.
@@ -30,11 +44,15 @@ def get_gluc_conc(df: pl.DataFrame, vmax=168669125, km=227.2):
     ----------
     df : pl.DataFrame
         polars dataframe containing RLU values.
-    vmax : float
-        Vmax value for use in the rlu_to_nm function
-    km : float
-        Km value for use in the rlu_to_nm function
+    reporter : 'gluc' | 'rma'
+        reporter type to use for conversion (either MM based gluc or linear RMA)
     """
-    return df.with_columns(
-        pl.col("rlu").map_elements(rlu_to_nm, return_dtype=pl.Float64).alias("gluc")
-    )
+
+    if reporter == 'gluc':
+        return df.with_columns(
+            pl.col("rlu").map_elements(rlu_to_nm_gluc, return_dtype=pl.Float64).alias("gluc")
+        )
+    elif reporter == 'rma':
+        return df.with_columns(
+            pl.col("rlu").map_elements(rlu_to_nm_rma, return_dtype=pl.Float64).alias("gluc")
+        )

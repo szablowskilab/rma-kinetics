@@ -71,7 +71,7 @@ def _(dataset, get_gluc_conc, os, pl):
     base_dir = os.path.join("notebooks", "data", "aav_rma_timecourse")
     data_dir = os.path.join(base_dir,dataset.value)
     raw_df = pl.read_csv(os.path.join(data_dir, "source.csv"))
-    gluc_df = get_gluc_conc(raw_df)
+    gluc_df = get_gluc_conc(raw_df, 'rma')
     return base_dir, data_dir, gluc_df
 
 
@@ -207,7 +207,7 @@ def _(
 
 @app.cell
 def _(jnp):
-    jnp.std(jnp.array([0.99, 0.98, 0.98]))
+    jnp.std(jnp.array([4.86e-3, 6.47e-3, 1.04e-2]))
     return
 
 
@@ -451,7 +451,7 @@ def _(base_dir, dataset, get_gluc_conc, jnp, os, pl, plt, sb, solution):
 
         print(_dataset) 
         _raw_df = pl.read_csv(os.path.join(base_dir, _dataset, "source.csv"))
-        _gluc_df = get_gluc_conc(_raw_df)
+        _gluc_df = get_gluc_conc(_raw_df, 'rma')
         _mean_gluc = _gluc_df.group_by("time").agg([
             pl.col("gluc").mean().alias("mean_gluc"),
             pl.col("gluc").std().alias("std_gluc")
@@ -480,6 +480,11 @@ def _(base_dir, dataset, get_gluc_conc, jnp, os, pl, plt, sb, solution):
     plt.tight_layout()
     plt.savefig(os.path.join(base_dir, "fit.svg"))
     plt.gca()
+    return
+
+
+@app.cell
+def _():
     return
 
 
