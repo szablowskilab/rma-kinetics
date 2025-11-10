@@ -31,11 +31,11 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       # Run the build script to export notebooks to WebAssembly
-      - name: Export notebooks
-        run: |
-          # build the app
-          sudo apt install libmpich-dev # needed for diffopt in dev deps
-          uv run marimo export html-wasm app/main.py -o _site --mode run
+      # - name: Export notebooks
+      #   run: |
+      #     # build the app
+      #     sudo apt install libmpich-dev # needed for diffopt in dev deps
+      #     uv run marimo export html-wasm app/main.py -o _site --mode run
 
       # build docs
       - name: Build docs
