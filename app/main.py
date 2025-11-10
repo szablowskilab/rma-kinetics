@@ -14,7 +14,9 @@ def _():
 def _():
     from rma_kinetics.models import ConstitutiveRMA, TetRMA, ChemogeneticRMA, DoxPKConfig, CnoPKConfig, ForceRMA
     from rma_kinetics.units import Time, Concentration
-    from jax import config as jax_config
+    from jax import config as jax_config, random 
+    from random import randint
+    from equinox import tree_at
 
     import matplotlib.pyplot as plt
     import seaborn as sb
@@ -31,7 +33,10 @@ def _():
         TetRMA,
         Time,
         plt,
+        randint,
+        random,
         sb,
+        tree_at,
     )
 
 
@@ -129,6 +134,10 @@ def _(concentration_units, mo, time_units):
         value=1/72, label=f"Oscillation Frequency (1/{time_units.value})"
     )
 
+    noise_strength = mo.ui.number(
+        value=0, label="Noise strength [0, 1] (Applied to plasma RMA)"
+    )
+
     rma_params = mo.vstack([
         mo.md("## RMA Rates"),
         rma_prod_rate,
@@ -141,7 +150,8 @@ def _(concentration_units, mo, time_units):
         rma_prod_rate,
         rma_rt_rate,
         rma_deg_rate,
-        rma_force_frequency
+        rma_force_frequency,
+        noise_strength
     ])
 
     extended_rma_params = mo.vstack([
@@ -474,6 +484,7 @@ def _(concentration_units, mo, time_units):
         hm3dq_prod_rate,
         leaky_rma_prod_rate,
         leaky_tta_prod_rate,
+        noise_strength,
         rma_deg_rate,
         rma_force_frequency,
         rma_force_params,
@@ -800,6 +811,9 @@ def _(
     leaky_rma_prod_rate,
     leaky_tta_prod_rate,
     mo,
+    noise_strength,
+    randint,
+    random,
     rma_deg_rate,
     rma_force_frequency,
     rma_prod_rate,
@@ -809,6 +823,7 @@ def _(
     stop_time,
     time_map,
     time_units,
+    tree_at,
     tta_coop,
     tta_deg_rate,
     tta_kd,
@@ -905,6 +920,26 @@ def _(
                 y0=y0,
                 sampling_rate=sampling_rate.value
             )
+
+            if model_selection.value == "Oscillating" and noise_strength.value > 0:
+                prng_key=random.key(randint(0, 2**32 - 1))
+                noisy_solution = model._apply_noise(solution.plasma_rma, noise_strength.value, prng_key)
+                # set the plasma RMA to the noisy signal
+                #solution._diffsol.ys[1] = noisy_solution
+                #solution_pre = list(solution._diffsol.ys)
+                #solution_pre[1] = noisy_solution
+                #solution._diffsol.ys = tuple(solution_pre)
+            
+                #solution = tree_at(
+                    #lambda solution: solution._diffsol.ys[1],
+                    #solution._diffsol.ys[1],
+                    #noisy_solution
+                #)
+                solution = tree_at(
+                        lambda s: s._diffsol.ys[1],
+                        solution,
+                        noisy_solution
+                    )
 
         return solution, species
 
