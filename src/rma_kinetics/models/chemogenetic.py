@@ -185,8 +185,8 @@ class ChemogeneticRMA(TetRMA):
         )
 
         # CNO+CLZ/DREADD induced TA expression
-        cno_ec50_hill = (brain_cno / self.cno.cno_brain_vd)**self.cno_coop
-        clz_ec50_hill = (brain_clz / self.cno.clz_brain_vd)**self.clz_coop
+        cno_ec50_hill = (brain_cno / self.cno.cno_brain_vd / self.cno_ec50)**self.cno_coop
+        clz_ec50_hill = (brain_clz / self.cno.clz_brain_vd / self.clz_ec50)**self.clz_coop
         active_dreadd_frac = (cno_ec50_hill + clz_ec50_hill) / (1 + cno_ec50_hill + clz_ec50_hill)
         dreadd_modulator = (active_dreadd_frac * dreadd / self.dq_ec50)**self.dq_coop
         dta = ((self.leaky_tta_prod_rate + (self.tta_prod_rate * dreadd_modulator)) / (1 + dreadd_modulator)) - (self.tta_deg_rate * ta)

@@ -13,7 +13,6 @@ with app.setup:
     import seaborn as sb
     import matplotlib.pyplot as plt
     import polars as pl
-    from matplotlib.collections import LineCollection
     from itertools import product
     import os
     from random import randint
@@ -896,7 +895,7 @@ def _():
         fs = 10
         simulation_config = {
             "t0": 0,
-            "t1": t1, 
+            "t1": t1,
             "dt0": 0.01,
             "y0": (prod_rate/rt_rate, prod_rate/deg_rate),
             "sampling_rate": fs,
@@ -948,7 +947,7 @@ def _(tp_sens):
 @app.cell
 def _(parameter_space, tp_sens):
     max_mu_star_tp = max(tp_sens["mu_star"])
-    norm_mu_star_tp = tp_sens["mu_star"] / max_mu_star_tp 
+    norm_mu_star_tp = tp_sens["mu_star"] / max_mu_star_tp
     norm_mu_star_conf = tp_sens["mu_star_conf"] / max_mu_star_tp
     norm_sigma = tp_sens["sigma"] / jnp.max(tp_sens["sigma"])
 
@@ -984,7 +983,7 @@ def _(morris_analyzer, morris_sampler, parameter_space):
         fs = 10
         simulation_config = {
             "t0": 0,
-            "t1": t1, 
+            "t1": t1,
             "dt0": 0.01,
             "y0": (prod_rate/rt_rate, prod_rate/deg_rate),
             "sampling_rate": fs,
@@ -1014,7 +1013,7 @@ def _(morris_analyzer, morris_sampler, parameter_space):
 @app.cell
 def _(parameter_space, tr_sens):
     max_mu_star_tr = max(tr_sens["mu_star"])
-    norm_mu_star_tr = tr_sens["mu_star"] / max_mu_star_tr 
+    norm_mu_star_tr = tr_sens["mu_star"] / max_mu_star_tr
     norm_mu_star_conf_tr = tr_sens["mu_star_conf"] / max_mu_star_tr
     norm_sigma_tr = tr_sens["sigma"] / jnp.max(tr_sens["sigma"])
 
@@ -1055,7 +1054,7 @@ def _(
         fs = 10
         simulation_config = {
             "t0": 0,
-            "t1": t1, 
+            "t1": t1,
             "dt0": 0.01,
             "y0": (prod_rate/rt_rate, prod_rate/deg_rate),
             "sampling_rate": fs,
@@ -1092,7 +1091,7 @@ def _(
 def _(coh_sens, parameter_space, tr_sens):
 
     max_mu_star_coh = max(tr_sens["mu_star"])
-    norm_mu_star_coh = coh_sens["mu_star"] / max_mu_star_coh 
+    norm_mu_star_coh = coh_sens["mu_star"] / max_mu_star_coh
     norm_mu_star_conf_coh = coh_sens["mu_star_conf"] / max_mu_star_coh
     norm_sigma_coh = coh_sens["sigma"] / jnp.max(coh_sens["sigma"])
 
