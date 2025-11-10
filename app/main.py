@@ -17,8 +17,10 @@ def _():
     from jax import config as jax_config, random 
     from random import randint
     from equinox import tree_at
+    from datetime import datetime
 
     import matplotlib.pyplot as plt
+    import pandas as pd
     import seaborn as sb
 
     jax_config.update("jax_enable_x64", True)
@@ -32,6 +34,8 @@ def _():
         ForceRMA,
         TetRMA,
         Time,
+        datetime,
+        pd,
         plt,
         randint,
         random,
@@ -929,7 +933,7 @@ def _(
                 #solution_pre = list(solution._diffsol.ys)
                 #solution_pre[1] = noisy_solution
                 #solution._diffsol.ys = tuple(solution_pre)
-            
+
                 #solution = tree_at(
                     #lambda solution: solution._diffsol.ys[1],
                     #solution._diffsol.ys[1],
@@ -987,29 +991,59 @@ def _(mo, model_selection, run_button, run_simulation):
         options=species,
         value="Plasma RMA",
     )
-    return solution, species_selector
+    return solution, species, species_selector
 
 
 @app.cell
-def _(mo, plt, sb, solution, species_selector):
+def _():
+    SPECIES_MAP = {
+        "Brain RMA": 0,
+        "Plasma RMA": 1,
+        "tTA": 2,
+        "Dox": 3,
+        "hM3Dq": 5,
+        "CNO": 7,
+        "CLZ": 9
+    }
+    return (SPECIES_MAP,)
+
+
+@app.cell
+def _(
+    SPECIES_MAP,
+    datetime,
+    mo,
+    model_selection,
+    pd,
+    plt,
+    sb,
+    solution,
+    species,
+    species_selector,
+):
     fig = None
     if solution is not None:
         solution._plot_species(species_selector.value)
+    
+        df = pd.DataFrame({"name": species, "concentration": [solution._diffsol.ys[SPECIES_MAP[s]] for s in species]})
+        csv_download = mo.download(
+            data=df.to_csv().encode("utf-8"),
+            filename=f"{model_selection.value.lower()}-rma-results-{datetime.today().strftime("%Y-%m-%d")}.csv",
+            mimetype="text/csv",
+            label="Download CSV",
+        )
 
         sb.despine()
         fig = plt.gcf()
 
     mo.vstack([
         mo.mpl.interactive(fig),
-        species_selector,
+        mo.hstack([
+            species_selector,
+            csv_download
+        ], justify="start", align="center", gap=2)
         #mo.md("If you found this tool useful, consider citing [Buitrago et al., 2025]()")
     ])
-
-    return
-
-
-@app.cell
-def _():
     return
 
 
