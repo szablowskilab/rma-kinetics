@@ -1,16 +1,20 @@
 import marimo
 
 __generated_with = "0.13.15"
-app = marimo.App(width="medium")
+app = marimo.App(width="medium", app_title="RMA Kinetics")
 
 
 @app.cell
 def _():
     import marimo as mo
-    from rma_kinetics.models import ConstitutiveRMA, TetRMA, ChemogeneticRMA, DoxPKConfig, CnoPKConfig
+    return (mo,)
+
+
+@app.cell
+def _():
+    from rma_kinetics.models import ConstitutiveRMA, TetRMA, ChemogeneticRMA, DoxPKConfig, CnoPKConfig, ForceRMA
     from rma_kinetics.units import Time, Concentration
-    from diffrax import SaveAt
-    from jax import config as jax_config, numpy as jnp
+    from jax import config as jax_config
 
     import matplotlib.pyplot as plt
     import seaborn as sb
@@ -23,9 +27,9 @@ def _():
         Concentration,
         ConstitutiveRMA,
         DoxPKConfig,
+        ForceRMA,
         TetRMA,
         Time,
-        mo,
         plt,
         sb,
     )
@@ -102,17 +106,17 @@ def _(concentration_units, mo, time_units):
 
     # RMA rates
     rma_prod_rate = mo.ui.number(
-        value=5e-3,
+        value=0.138,
         label=f"Production rate ({concentration_units.value}/{time_units.value})"
     )
 
     rma_rt_rate = mo.ui.number(
-        value=0.6,
+        value=0.684,
         label=f"Reverse transcytosis rate (1/{time_units.value})"
     )
 
     rma_deg_rate = mo.ui.number(
-        value=7e-3,
+        value=7.24e-3,
         label=f"Degradation rate (1/{time_units.value})"
     )
 
@@ -121,11 +125,23 @@ def _(concentration_units, mo, time_units):
         label=f"Leaky production rate ({concentration_units.value}/{time_units.value})"
     )
 
+    rma_force_frequency = mo.ui.number(
+        value=1/72, label=f"Oscillation Frequency (1/{time_units.value})"
+    )
+
     rma_params = mo.vstack([
         mo.md("## RMA Rates"),
         rma_prod_rate,
         rma_rt_rate,
         rma_deg_rate
+    ])
+
+    rma_force_params = mo.vstack([
+        mo.md("## RMA Rates"),
+        rma_prod_rate,
+        rma_rt_rate,
+        rma_deg_rate,
+        rma_force_frequency
     ])
 
     extended_rma_params = mo.vstack([
@@ -336,12 +352,12 @@ def _(concentration_units, mo, time_units):
     )
 
     cno_ec50 = mo.ui.number(
-        value=7,
+        value=7.97,
         label=f"CNO EC50 ({concentration_units.value})"
     )
 
     clz_ec50 = mo.ui.number(
-        value=3,
+        value=4.34,
         label=f"CLZ EC50 ({concentration_units.value})"
     )
 
@@ -357,7 +373,7 @@ def _(concentration_units, mo, time_units):
 
     # hM3Dq parameters
     hm3dq_prod_rate = mo.ui.number(
-        value=10,
+        value=8.05,
         label=f"HM3Dq production rate ({concentration_units.value}/{time_units.value})"
     )
 
@@ -367,7 +383,7 @@ def _(concentration_units, mo, time_units):
     )
 
     hm3dq_ec50 = mo.ui.number(
-        value=3,
+        value=6.79,
         label=f"HM3Dq EC50 ({concentration_units.value})"
     )
 
@@ -459,6 +475,8 @@ def _(concentration_units, mo, time_units):
         leaky_rma_prod_rate,
         leaky_tta_prod_rate,
         rma_deg_rate,
+        rma_force_frequency,
+        rma_force_params,
         rma_params,
         rma_prod_rate,
         rma_rt_rate,
@@ -579,6 +597,7 @@ def _(
     init_plasma_dox,
     init_plasma_rma,
     mo,
+    rma_force_params,
     rma_params,
     simulation_params,
     tta_params,
@@ -597,6 +616,21 @@ def _(
             })
         ], gap=1.25),
     ], gap=1.25)
+
+    force_params = mo.vstack([
+        mo.vstack([mo.md("")]),
+        mo.vstack([
+            simulation_params,
+            rma_force_params,
+            mo.accordion({
+                "Initial Conditions": mo.vstack([
+                    init_brain_rma,
+                    init_plasma_rma,
+                ])
+            })
+        ], gap=1.25),
+    ], gap=1.25)
+
 
     tetoff_params = mo.vstack([
         mo.vstack([mo.md("")]),
@@ -662,6 +696,7 @@ def _(
         "Constitutive": base_params,
         "Tet-Off": tetoff_params,
         "Chemogenetic": chemogenetic_params,
+        "Oscillating": force_params
     })
     return (model_selection,)
 
@@ -733,6 +768,7 @@ def _(
 def _(
     ChemogeneticRMA,
     ConstitutiveRMA,
+    ForceRMA,
     TetRMA,
     clz_coop,
     clz_ec50,
@@ -765,6 +801,7 @@ def _(
     leaky_tta_prod_rate,
     mo,
     rma_deg_rate,
+    rma_force_frequency,
     rma_prod_rate,
     rma_rt_rate,
     sampling_rate,
@@ -850,6 +887,16 @@ def _(
                         init_peritoneal_cno.value, init_brain_cno.value, init_plasma_cno.value,
                         init_brain_clz.value, init_plasma_clz.value
                     )
+                case "Oscillating":
+                    model = ForceRMA(
+                        rma_prod_rate.value,
+                        rma_rt_rate.value,
+                        rma_deg_rate.value,
+                        rma_force_frequency.value,
+                        time_units=time_map[time_units.value],
+                        conc_units=conc_map[concentration_units.value]
+                    )
+                    y0 = (init_brain_rma.value, init_plasma_rma.value)
 
             solution = model.simulate(
                 t0=start_time.value,

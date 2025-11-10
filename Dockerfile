@@ -17,6 +17,4 @@ COPY app/main.py app/main.py
 
 EXPOSE 8080
 
-CMD ["uv", "run", "marimo", "run", "app/main.py", "--host", "0.0.0.0", "-p", "8080"]
-
-
+CMD ["uv", "run", "marimo", "run", "app/main.py", "--host", "0.0.0.0", "-p", "8080", "--base-url", "/rmamodel", "--headless"]
