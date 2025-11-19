@@ -963,7 +963,7 @@ def _(mo, model_selection):
             mo.vstack([
                 mo.md("# RMA Kinetics Simulator"),
                 mo.md('''
-                From "Modeling synthetic serum marker dynamics for monitoring deep tissue gene expression."
+                From "Modeling synthetic serum marker dynamics for monitoring deep-tissue gene expression."
                 '''),
             ]),
             mo.nav_menu(
@@ -1042,14 +1042,19 @@ def _(
             species_selector,
             csv_download
         ], justify="start", align="center", gap=2),
-        mo.md(
-        """
-        If you found this tool useful, consider citing:
-
-        [Buitrago N, Brau J, Szablowsk JO\*, Modeling synthetic serum marker kinetics for monitoring deep-tissue gene expression, *bioRxiv 2025.11.17.688787, (2025)*](https://doi.org/10.1101/2025.11.17.688787)
-        """
-             )
     ])
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        """
+    If you found this tool useful, consider citing:
+
+    [Buitrago N, Brau J, Szablowsk JO\*, Modeling synthetic serum marker kinetics for monitoring deep-tissue gene expression, *bioRxiv 2025.11.17.688787, (2025)*](https://doi.org/10.1101/2025.11.17.688787)
+    """
+    )
     return
 
 

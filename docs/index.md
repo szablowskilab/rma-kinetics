@@ -10,7 +10,7 @@ Currently, there are three main models:
 3. [ChemogeneticRMA](./api/models/chemogenetic.md)
 
 A basic [web application](https://rma-kinetics.up.railway.app) is available for
-simple testing.
+simple testing. Please see the [web app guide](web/guide.md) for more information.
 
 ## Installation
 

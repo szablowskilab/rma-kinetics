@@ -60,3 +60,4 @@ nav:
               - "api/models/cno/config.md"
       - "api/solution.md"
       - "api/units.md"
+  - "web/guide.md"
