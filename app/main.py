@@ -1024,7 +1024,7 @@ def _(
     fig = None
     if solution is not None:
         solution._plot_species(species_selector.value)
-    
+
         df = pd.DataFrame({"name": species, "concentration": [solution._diffsol.ys[SPECIES_MAP[s]] for s in species]})
         csv_download = mo.download(
             data=df.to_csv().encode("utf-8"),
@@ -1041,9 +1041,20 @@ def _(
         mo.hstack([
             species_selector,
             csv_download
-        ], justify="start", align="center", gap=2)
-        #mo.md("If you found this tool useful, consider citing [Buitrago et al., 2025]()")
+        ], justify="start", align="center", gap=2),
+        mo.md(
+        """
+        If you found this tool useful, consider citing:
+
+        [Buitrago N, Brau J, Szablowsk JO\*, Modeling synthetic serum marker kinetics for monitoring deep-tissue gene expression, *bioRxiv 2025.11.17.688787, (2025)*](https://doi.org/10.1101/2025.11.17.688787)
+        """
+             )
     ])
+    return
+
+
+@app.cell
+def _():
     return
 
 
