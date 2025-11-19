@@ -9,7 +9,17 @@ Currently, there are three main models:
 2. [TetRMA](./api/models/tetoff.md)
 3. [ChemogeneticRMA](./api/models/chemogenetic.md)
 
+A basic [web application](https://rma-kinetics.up.railway.app) is available for
+simple testing.
+
 ## Installation
+
+A python package is available on [PyPI](https://pypi.org/project/rma-kinetics/)
+and can be installed with [uv](https://docs.astral.sh/uv/), pip,
+and possibly other pip compatible alternatives.
+
+To get started with uv, create a new project with `uv init` in a clean working
+directory, or use `uv add` directly. For example,
 
 ### uv
 
@@ -17,6 +27,8 @@ Currently, there are three main models:
 uv add rma-kinetics
 # or uv pip install rma-kinetics
 ```
+
+The same can be done with standard pip,
 
 ### pip
 
@@ -26,24 +38,28 @@ pip install rma-kinetics
 
 ### Source
 
-Clone the repository
+To install the package from source, make sure git is installed on your system and
+follow the workflow detailed below.
+
+1. Clone the repository
 
 ```bash
 git clone https://github.com/szablowskilab/rma-kinetics.git
 cd rma-kinetics
 ```
 
-Create a new virtual environment. Below is an example using UV to sync
+2. Create a new virtual environment. Below is an example using UV to sync
 dependencies (Linux/Macos).
 
 ```bash
 uv sync
-source .venv/bin/activate
+source .venv/bin/activate # optional if using `uv add` later
 ```
 
-Install the rma-kinetics package (`uv pip install -e .`).
+3. Install the rma-kinetics package (`uv pip install -e .`).
 
-
+You can then import the package in scripts or make modifications to source for
+testing.
 
 ## Quick Start
 
