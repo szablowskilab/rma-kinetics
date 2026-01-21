@@ -1052,7 +1052,7 @@ def _(mo):
         """
     If you found this tool useful, consider citing:
 
-    [Buitrago N, Brau J, Szablowsk JO\*, Modeling synthetic serum marker kinetics for monitoring deep-tissue gene expression, *bioRxiv 2025.11.17.688787, (2025)*](https://doi.org/10.1101/2025.11.17.688787)
+    [Buitrago N, Brau J, Szablowsk JO, Modeling synthetic serum marker kinetics for monitoring deep-tissue gene expression, *bioRxiv 2025.11.17.688787, (2025)*](https://doi.org/10.1101/2025.11.17.688787)
     """
     )
     return

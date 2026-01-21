@@ -19,7 +19,7 @@ diffrax = { git = "https://github.com/patrick-kidger/diffrax" }
 [dependency-groups]
 dev = [
     "diffopt>=1.2.0",
-    "marimo>=0.13.15",
+    "marimo>=0.19.4",
     "mpi4py>=4.0.3",
     "polars>=1.30.0",
     "pyarrow>=20.0.0",
