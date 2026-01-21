@@ -1,4 +1,3 @@
-from dataclasses import field
 from equinox import Module as EqxModule
 from jaxtyping import PyTree
 from jax import numpy as jnp
@@ -33,14 +32,18 @@ class DoxPKConfig(EqxModule):
     brain_transport_rate: float = 0.2
     plasma_transport_rate: float = 1
     plasma_vd: float = 0.21
-    intake_rate: float = field(init=False)
-    plasma_dox_ss: float = field(init=False)
-    brain_dox_ss: float = field(init=False)
 
-    def __post_init__(self):
-        self.intake_rate = self.vehicle_intake_rate * self.bioavailability * self.dose / (DOX_MW * self.plasma_vd)* 1e6
-        self.plasma_dox_ss = self.absorption_rate * self.intake_rate / self.elimination_rate
-        self.brain_dox_ss = self.brain_transport_rate * self.plasma_dox_ss / self.plasma_transport_rate
+    @property
+    def intake_rate(self) -> float:
+        return self.vehicle_intake_rate * self.bioavailability * self.dose / (DOX_MW * self.plasma_vd) * 1e6
+
+    @property
+    def plasma_dox_ss(self) -> float:
+        return self.absorption_rate * self.intake_rate / self.elimination_rate
+
+    @property
+    def brain_dox_ss(self) -> float:
+        return self.brain_transport_rate * self.plasma_dox_ss / self.plasma_transport_rate
 
 
 class DoxPK(EqxModule):

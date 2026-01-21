@@ -1,6 +1,5 @@
 from equinox import Module as EqxModule
 from jaxtyping import PyTree
-from dataclasses import field
 
 
 CNO_MW = 342.8 # g/mol
@@ -40,11 +39,11 @@ class CnoPKConfig(EqxModule):
     cno_brain_vd: float = 0.21
     clz_plasma_vd: float = 0.24
     clz_brain_vd: float = 8.87e-2
-    cno_nmol: float = field(init=False)
 
-    def __post_init__(self):
-        # convert cno_dose from mg to nmol
-        self.cno_nmol = self.cno_dose / CNO_MW * 1e6
+    @property
+    def cno_nmol(self) -> float:
+        """Convert cno_dose from mg to nmol."""
+        return self.cno_dose / CNO_MW * 1e6
 
 
 class CnoPK(EqxModule):
