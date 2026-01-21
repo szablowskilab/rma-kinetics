@@ -4,6 +4,8 @@ from .tet_induced import TetRMA
 from ..units import Time, Concentration
 from .abstract import Solution
 
+from equinox import field as eqx_field
+
 from jaxtyping import PyTree
 from jax import numpy as jnp
 from diffrax import (
@@ -53,7 +55,7 @@ class ChemogeneticRMA(TetRMA):
         conc_units (Concentration): Concentration units (Default = Concentration.nanomolar).
     """
     cno: CnoPK
-    cno_t0: float
+    cno_t0: float = eqx_field(static=True)
     cno_ec50: float
     clz_ec50: float
     cno_coop: int
