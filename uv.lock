@@ -1613,6 +1613,8 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "diffrax" },
+    { name = "equinox" },
+    { name = "jax" },
     { name = "matplotlib" },
 ]
 
@@ -1635,6 +1637,8 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "diffrax", git = "https://github.com/patrick-kidger/diffrax" },
+    { name = "equinox", specifier = "==0.12.2" },
+    { name = "jax", specifier = "==0.6.1" },
     { name = "matplotlib", specifier = ">=3.10.3" },
 ]
 

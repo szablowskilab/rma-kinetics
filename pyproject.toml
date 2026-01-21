@@ -5,6 +5,8 @@ description = "Kinetic models for released markers of activity."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "jax==0.6.1",
+    "equinox==0.12.2",
     "diffrax>=0.7.0",
     "matplotlib>=3.10.3",
 ]
