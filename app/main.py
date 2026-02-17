@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.13.15"
+__generated_with = "0.19.4"
 app = marimo.App(width="medium", app_title="RMA Kinetics")
 
 
@@ -444,7 +444,6 @@ def _(concentration_units, mo, time_units):
             ])
         })
     ])
-
     return (
         clz_brain_transport_rate,
         clz_brain_vd,
@@ -775,7 +774,6 @@ def _(
         clz_plasma_vd=clz_plasma_vd.value,
         clz_brain_vd=clz_brain_vd.value
     )
-
     return cno_model_config, dox_model_config
 
 
@@ -946,7 +944,6 @@ def _(
                     )
 
         return solution, species
-
     return (run_simulation,)
 
 
@@ -965,6 +962,9 @@ def _(mo, model_selection):
                 mo.md('''
                 From "Modeling synthetic serum marker dynamics for monitoring deep-tissue gene expression."
                 '''),
+                mo.callout(mo.md('''
+                NOTE: Consider trying our latest [web](https://nsbuitrago.github.io/rma-kinetics-app/) and new [desktop](https://github.com/nsbuitrago/rma-kinetics-app) version.
+                '''), kind="info")
             ]),
             mo.nav_menu(
                 {
@@ -1048,13 +1048,11 @@ def _(
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
+    mo.md("""
     If you found this tool useful, consider citing:
 
     [Buitrago N, Brau J, Szablowsk JO, Modeling synthetic serum marker kinetics for monitoring deep-tissue gene expression, *bioRxiv 2025.11.17.688787, (2025)*](https://doi.org/10.1101/2025.11.17.688787)
-    """
-    )
+    """)
     return
 
 
